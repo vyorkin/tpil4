@@ -1,1 +1,11 @@
-import Tpil4.Basic
+import Tpil4.DependentTypeTheory
+import Tpil4.PropositionsAsTypes
+import Tpil4.QuantifiersAndEquality
+import Tpil4.Tactics
+import Tpil4.InteractingWithLean
+import Tpil4.InductiveTypes
+import Tpil4.InductionAndRecursion
+import Tpil4.StructuresAndRecords
+import Tpil4.TypeClasses
+import Tpil4.TheConversionTacticMode
+import Tpil4.AxiomsAndComputation
