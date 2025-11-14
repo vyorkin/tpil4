@@ -1,5 +1,5 @@
 import Tpil4.DependentTypeTheory
-import Tpil4.PropositionsAsTypes
+import Tpil4.PropositionsAndProofs
 import Tpil4.QuantifiersAndEquality
 import Tpil4.Tactics
 import Tpil4.InteractingWithLean
