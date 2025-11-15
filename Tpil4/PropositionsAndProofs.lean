@@ -203,24 +203,24 @@ namespace ClassicalLogic
     let hh := em p -- p ∨ ¬p
     Or.elim hh
       id
-      (fun hnp : ¬p => absurd hnp h)
+      (λ hnp : ¬p => absurd hnp h)
 
   theorem em' (p : Prop) : p ∨ ¬p :=
     have h : ¬¬(p ∨ ¬p) := -- ((p ∨ ¬p) -> False) -> False
-      fun hnpnp : ¬(p ∨ ¬p) => -- (p ∨ ¬p) -> False
-        have hnp : ¬p := fun hp => hnpnp (Or.inl hp) -- p -> False
-        have hnpnp' : ¬¬p := fun hp => hnpnp (Or.inr hp) -- (p -> False) -> False
+      λ hnpnp : ¬(p ∨ ¬p) => -- (p ∨ ¬p) -> False
+        have hnp : ¬p := λ hp => hnpnp (Or.inl hp) -- p -> False
+        have hnpnp' : ¬¬p := λ hp => hnpnp (Or.inr hp) -- (p -> False) -> False
         absurd hnp hnpnp'
     dne (p ∨ ¬p) h
 
   example (h : ¬¬p) : p :=
     byCases
-      (fun h1 : p => h1)
-      (fun h1 : ¬p => absurd h1 h)
+      (λ h1 : p => h1)
+      (λ h1 : ¬p => absurd h1 h)
 
   example (h : ¬¬p) : p :=
     byContradiction
-      (fun h1 : ¬p => h h1)
+      (λ h1 : ¬p => h h1)
 
 end ClassicalLogic
 
@@ -324,11 +324,30 @@ namespace ExercisesClassical
 
   variable (p q r : Prop)
 
-  example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := sorry
+  example : (p → q ∨ r) → ((p → q) ∨ (p → r)) :=
+    λ h => Or.elim (em p)
+      (λ h_p => Or.elim (h h_p)
+        (λ h_q => Or.inl (λ _ => h_q))
+        (λ h_r => Or.inr (λ _ => h_r)))
+      (λ h_np => Or.inl (λ h_p => absurd h_p h_np))
 
-  example : ¬(p ∧ q) → ¬p ∨ ¬q := sorry
+  example : ¬(p ∧ q) → ¬p ∨ ¬q :=
+    λ h => Or.elim (em p)
+      (λ h_p => Or.elim (em q)
+        (λ h_q =>
+          have h_pq : p ∧ q := ⟨h_p, h_q⟩
+          False.elim (h h_pq))
+        (λ h_nq => Or.inr h_nq))
+      (λ h_np => Or.inl h_np)
 
-  example : ¬(p → q) → p ∧ ¬q := sorry
+  example : ¬(p → q) → p ∧ ¬q :=
+    λ h => Or.elim (em ¬(p → q))
+      (λ h_npq => False.elim (h h_pq))
+      (λ _ => Or.elim (em p)
+        (λ h_p =>
+          sorry)
+        (λ h_np => sorry)
+        )
 
   example : (p → q) → (¬p ∨ q) := sorry
 
