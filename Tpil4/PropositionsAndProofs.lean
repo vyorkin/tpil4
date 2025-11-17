@@ -206,10 +206,10 @@ namespace ClassicalLogic
       (λ hnp : ¬p => absurd hnp h)
 
   theorem em' (p : Prop) : p ∨ ¬p :=
-    have h : ¬¬(p ∨ ¬p) := -- ((p ∨ ¬p) -> False) -> False
-      λ hnpnp : ¬(p ∨ ¬p) => -- (p ∨ ¬p) -> False
-        have hnp : ¬p := λ hp => hnpnp (Or.inl hp) -- p -> False
-        have hnpnp' : ¬¬p := λ hp => hnpnp (Or.inr hp) -- (p -> False) -> False
+    have h : ¬¬(p ∨ ¬p) :=
+      λ hnpnp : ¬(p ∨ ¬p) =>
+        have hnp : ¬p := λ hp => hnpnp (Or.inl hp)
+        have hnpnp' : ¬¬p := λ hp => hnpnp (Or.inr hp)
         absurd hnp hnpnp'
     dne (p ∨ ¬p) h
 
@@ -341,20 +341,30 @@ namespace ExercisesClassical
       (λ h_np => Or.inl h_np)
 
   example : ¬(p → q) → p ∧ ¬q :=
-    λ h => Or.elim (em ¬(p → q))
-      (λ h_npq => False.elim (h h_pq))
-      (λ _ => Or.elim (em p)
-        (λ h_p =>
-          sorry)
-        (λ h_np => sorry)
-        )
+    λ h => ⟨sorry, sorry⟩
 
-  example : (p → q) → (¬p ∨ q) := sorry
+  example : (p → q) → (¬p ∨ q) :=
+    λ h => Or.elim (em p)
+      (λ h_p => Or.inr (h h_p))
+      (λ h_np => Or.inl h_np)
 
-  example : (¬q → ¬p) → (p → q) := sorry
+  example : (¬q → ¬p) → (p → q) :=
+    λ h => Or.elim (em q)
+      (λ h_q => λ _ => h_q)
+      (λ h_nq => λ h_p => absurd h_p (h h_nq))
 
-  example : p ∨ ¬p := sorry
+  example : p ∨ ¬p := em p
 
-  example : (((p → q) → p) → p) := sorry
+  example : (((p → q) → p) → p) :=
+    λ h => Or.elim (em (p → q))
+      (λ h_pq => h h_pq)
+      (λ h_npq => sorry)
 
 end ExercisesClassical
+
+namespace ExercisesNonClassical
+  variable (p : Prop)
+
+  -- TODO: Prove without using classical logic.
+  example : ¬(p ↔ ¬ p) := sorry
+end ExercisesNonClassical
