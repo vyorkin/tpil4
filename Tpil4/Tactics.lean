@@ -100,8 +100,6 @@ example (α : Type) : ∀ x : α, x = x := by
   exact Eq.refl x
   -- rfl
 
-variable (α : Type)
-
 -- Тактика intro позволяет разбирать и
 -- затаскивать в контекст гипотезу по кусочкам.
 example (q p : α → Prop) : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x := by
@@ -373,7 +371,6 @@ example (p q : Prop) : p ∧ ¬ p → q := by
   intro h
   cases h
   contradiction
-
 end
 
 example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
@@ -521,5 +518,616 @@ example (p q : Prop) (hp : p) : p ∨ q :=
   by apply Or.inl; assumption
 
 -- Комбинатор <;> мы уже видели.
+-- Это пиздато использовать, когда для всех подцелей,
+-- которые мы получили после применения тактики
+-- слева от комбинатора <;> можно применить тактику справа.
 example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
   by constructor <;> assumption
+
+-- first | t₁ | t₂ | ... | tₙ
+-- Комбинатор first применяет первую из тактик t₁, t₂, ..., tₙ
+-- пока не получится это сделать, либо фейлится, если
+-- не получилось применить ни одну из перечисленных.
+
+-- Хуёвины разделённые ; он считает за одно применение тактики.
+
+example (p q : Prop) (hp : p) : p ∨ q := by
+  first | apply Or.inl; assumption | apply Or.inr; assumption
+--                       ^^ решает
+
+example (p q : Prop) (hq : q) : p ∨ q := by
+  first | apply Or.inl; assumption | apply Or.inr; assumption
+--                       ^^ не решает               ^^ решает
+
+example (p q r : Prop) (hp : p) : p ∨ q ∨ r := by
+  repeat (first | apply Or.inl; assumption | apply Or.inr; assumption)
+
+example (p q r : Prop) (hq : q) : p ∨ q ∨ r := by
+  first | apply Or.inl; assumption | apply Or.inr; apply Or.inl; assumption
+example (p q r : Prop) (hq : q) : p ∨ q ∨ r := by
+  repeat (first | apply Or.inl; assumption | apply Or.inr | assumption)
+
+example (p q r : Prop) (hr : r) : p ∨ q ∨ r := by
+  repeat (first | apply Or.inl; assumption | apply Or.inr | assumption)
+
+-- Комбинатор try t выполняет тактику t и завершается всегда без ошибки.
+-- По сути try t = first | t | skip, где тактика skip ничего не делает,
+
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor <;> (try constructor) <;> assumption
+
+-- Repeat (try t) will loop forever
+
+-- Комбинатор all_goals t применяет тактику t ко всем подцелям.
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor
+  all_goals (try constructor)
+  all_goals assumption
+
+-- Комбинатор any_goals t завершается успехом, если удалось применить
+-- тактику t хотя бы к одной из текущих подцелей.
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
+  constructor
+  any_goals constructor
+  any_goals assumption
+
+-- Благодаря эти комбинторам, можно в одну строчку раскидать
+-- на конъюнкты по подцелям эту одну большую конъюнкцию.
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) :
+  p ∧ ((p ∧ q) ∧ r) ∧ (q ∧ r ∧ p) := by
+  repeat (any_goals constructor)
+  all_goals assumption
+
+-- Можно ужать это док-во до одной строчки.
+example (p q r : Prop) (hp : p) (hq : q) (hr : r) :
+      p ∧ ((p ∧ q) ∧ r) ∧ (q ∧ r ∧ p) := by
+  repeat (any_goals (first | constructor | assumption))
+
+-- Комбинатор focus изолирует влияние тактики.
+-- focus (all_goals t) = t
+
+-- 5.6. Rewriting
+
+section
+variable (k : Nat) (f : Nat → Nat)
+
+example (h₁ : f 0 = 0) (h₂ : k = 0) : f k = 0 := by
+  rw [h₂] -- replace k with 0
+  rw [h₁] -- replace f 0 with 0
+
+example (x y : Nat) (p : Nat → Prop) (q : Prop) (h : q → x = y)
+        (h' : p y) (hq : q) : p x := by
+  rw [h hq]; assumption
+
+example (h₁ : f 0 = 0) (h₂ : k = 0) : f k = 0 := by
+  rw [h₂, h₁]
+
+end
+
+section
+variable (a b : Nat) (f : Nat → Nat)
+
+example (h₁ : a = b) (h₂ : f a = 0) : f b = 0 := by
+  rw [←h₁, h₂]
+
+example (a b c : Nat) : a + b + c = a + c + b := by
+  rw [Nat.add_assoc, Nat.add_comm b, ← Nat.add_assoc]
+
+example (a b c : Nat) : a + b + c = a + c + b := by
+  rw [Nat.add_assoc, Nat.add_assoc, Nat.add_comm b]
+
+example (a b c : Nat) : a + b + c = a + c + b := by
+  rw [Nat.add_assoc, Nat.add_assoc, Nat.add_comm _ b]
+
+example (f : Nat → Nat) (a : Nat) (h : a + 0 = 0) : f a = f 0 := by
+  rw [Nat.add_zero] at h
+  rw [h]
+end
+
+section
+def Tuple (α : Type) (n : Nat) :=
+  { as : List α // as.length = n }
+
+example (n : Nat) (h : n = 0) (t : Tuple α n) : Tuple α 0 := by
+  rw [h] at t
+  exact t
+end
+
+-- 5.7. Using the Simplifier
+
+example (x y z : Nat) : (x + 0) * (0 + y * 1 + z * 0) = x * y := by
+  simp
+
+example (x y z : Nat) (p : Nat → Prop) (h : p (x * y))
+        : p ((x + 0) * (0 + y * 1 + z * 0)) := by
+  simp; assumption
+
+section
+open List
+
+example (xs : List Nat)
+        : reverse (xs ++ [1, 2, 3]) = [3, 2, 1] ++ reverse xs := by
+  simp
+
+example (xs ys : List α)
+        : length (reverse (xs ++ ys)) = length xs + length ys := by
+  simp [Nat.add_comm]
+--        ^^^ По-умолчанию simp использовует все леммы/теоремы,
+--            помеченные атрибутом simp. А в квадратных скобках мы можем
+--            перечислить дополнительные леммы, которые мы хотим, чтобы
+--            использовала тактика simp.
+example (xs ys : List α)
+        : length (reverse (xs ++ ys)) = length xs + length ys := by
+  simp
+  rw [Nat.add_comm]
+
+example (x y z : Nat) (p : Nat → Prop)
+        (h : p ((x + 0) * (0 + y * 1 + z * 0))) : p (x * y) := by
+  simp at h; assumption
+end
+
+section
+attribute [local simp] Nat.mul_comm Nat.mul_assoc Nat.mul_left_comm
+attribute [local simp] Nat.add_assoc Nat.add_comm Nat.add_left_comm
+
+-- Звёздочка/вайлдкарт астериск указывает на то, что
+-- мы хотим применить simpl ко всем гипотезам из контекста и к цели.
+example (w x y z : Nat) (p : Nat → Prop)
+        (h : p (x * y + z * w * x)) : p (x * w * z + y * x) := by
+  simp at *; assumption
+
+example (x y z : Nat) (p : Nat → Prop)
+        (h₁ : p (1 * x + y)) (h₂ : p (x * z * 1))
+        : p (y + 0 + x) ∧ p (z * x) := by
+  simp at * <;> constructor <;> assumption
+
+example (w x y z : Nat) (p : Nat → Prop)
+        : x * y + z * w * x = x * w * z + y * x := by
+  simp
+
+example (w x y z : Nat) (p : Nat → Prop)
+        (h : p (x * y + z * w * x)) : p (x * w * z + y * x) := by
+  simp; simp at h; assumption
+
+end
+
+def f (m n : Nat) : Nat :=
+  m + n + m
+
+-- Тут выполнит указанные переписывания + развернёт определение f + упростит.
+example {m n : Nat} (h : n = 1) (h' : 0 = m) : (f m n) = n := by
+  simp [h, ←h', f]
+
+-- Идиоматичный ход это упростить цель, используя локальные гипотезы.
+variable (k : Nat) (f : Nat → Nat)
+example (h₁ : f 0 = 0) (h₂ : k = 0) : f k = 0 := by
+  simp [h₂, h₁]
+
+-- Если написать [*], то simp будет использовать все гипотезы,
+-- которые доступны в локальном контексте.
+variable (k : Nat) (f : Nat → Nat)
+example (h₁ : f 0 = 0) (h₂ : k = 0) : f k = 0 := by
+  simp [*]
+
+-- Используй все + коммутативность сложения.
+example (u w x y z : Nat) (h₁ : x = y + z) (h₂ : w = u + x)
+        : w = z + y + u := by
+  simp [*, Nat.add_comm]
+
+-- Тактика simp умеет переписывать и высказывания.
+example (p q : Prop) (hp : p) : p ∧ q ↔ q := by simp [*]
+example (p q : Prop) (hp : p) : p ∨ q := by simp [*]
+example (p q r : Prop) (hp : p) (hq : q) : p ∧ (q ∨ r) := by simp [*]
+
+section
+set_option linter.unusedVariables false
+
+example (u w x x' y y' z : Nat) (p : Nat → Prop)
+        (h₁ : x + 0 = x') (h₂ : y + 0 = y')
+        : x + y + 0 = x' + y' := by
+  simp at * -- Такая запись используется для упрощения всех гипотез и цели.
+  simp [*]  -- Используем упрощённые гипотезы для доказательства цели.
+end
+
+namespace Whatever
+open List
+
+def mk_symm (xs : List α) :=
+  xs ++ xs.reverse
+
+-- Можешь применить локально.
+-- attribute [local simp] mk_symm
+
+theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+  simp [mk_symm]
+
+example (xs ys : List Nat)
+        : (xs ++ mk_symm ys).reverse = mk_symm ys ++ xs.reverse := by
+  simp [reverse_mk_symm]
+
+example (xs ys : List Nat) (p : List Nat → Prop)
+        (h : p (xs ++ mk_symm ys).reverse)
+        : p (mk_symm ys ++ xs.reverse) := by
+  simp [reverse_mk_symm] at h; assumption
+
+end Whatever
+
+section
+open List
+
+def mk_symm (xs : List α) :=
+ xs ++ xs.reverse
+
+@[simp] theorem reverse_mk_symm (xs : List α)
+        : (mk_symm xs).reverse = mk_symm xs := by
+  simp [mk_symm]
+
+-- attribute [simp] reverse_mk_symm
+
+-- Сужает скоуп до текущего файла или секции (или неймспейса?).
+-- attribute [local simp] reverse_mk_symm
+
+example (xs ys : List Nat)
+        : (xs ++ mk_symm ys).reverse = mk_symm ys ++ xs.reverse := by
+  simp
+
+example (xs ys : List Nat) (p : List Nat → Prop)
+        (h : p (xs ++ mk_symm ys).reverse)
+        : p (mk_symm ys ++ xs.reverse) := by
+  simp at h; assumption
+
+end
+
+section
+example (xs ys : List Nat) (p : List Nat → Prop)
+        (h : p (xs ++ mk_symm ys).reverse)
+        : p (mk_symm ys ++ xs.reverse) := by
+  simp at h; assumption
+
+-- Можно запрещать использовать конкретные леммы.
+example (xs ys : List Nat) (p : List Nat → Prop)
+        (h : p (xs ++ mk_symm ys).reverse)
+        : p ((mk_symm ys).reverse ++ xs.reverse) := by
+  simp [-reverse_mk_symm] at h; assumption
+
+-- Или можно вообще исключать все, кроме указанного в скобках списка,
+-- c помощью модификатора only.
+example (xs ys : List Nat) (p : List Nat → Prop)
+        (h : p (xs ++ mk_symm ys).reverse)
+        : p ((mk_symm ys).reverse ++ xs.reverse) := by
+  simp only [List.reverse_append] at h; assumption
+end
+
+section
+-- Модификатор +contextual говорит simp'у:
+-- используй тот факт, что x = 0, когда упрощаешь ветку then
+-- и тот факт что, x ≠ 0, когда упрощаешь ветку else
+example : if x = 0 then y + x = y else x ≠ 0 := by
+  simp +contextual
+
+example : ∀ (x : Nat) (h : x = 0), y + x = y := by
+  simp +contextual
+end
+
+-- Ещё полезный модификатор +arith,
+-- позволяет упрощать арифметические выражения.
+
+example : 0 < 1 + x ∧ x + y + 2 ≥ y + 1 := by
+  simp +arith
+
+-- 5.8. Split Tactic
+
+def f₀ (x y z : Nat) : Nat :=
+  match x, y, z with
+  | 5, _, _ => y
+  | _, 5, _ => y
+  | _, _, 5 => y
+  | _, _, _ => 1
+
+-- Тактика split разбивает match по кейсам.
+-- Сколько было веток в match, столько будет и кейсов.
+-- То же и для if-then-else.
+example (x y z : Nat)
+        : x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w → f₀ x y w = 1 := by
+  intros
+  simp [f₀] -- Раскрывает определение f₀
+  split
+  · contradiction
+  · contradiction
+  · contradiction
+  · rfl
+
+example (x y z : Nat) :
+  x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w →
+  f₀ x y w = 1 := by
+  intros; simp [f₀]; split <;> first | contradiction | rfl
+
+def g (xs ys : List Nat) : Nat :=
+  match xs, ys with
+  | [a, b], _ => a+b+1
+  | _, [b, _] => b+1
+  | _, _      => 1
+
+example (xs ys : List Nat) (h : g xs ys = 0) : False := by
+  simp [g] at h; split at h <;> simp +arith at h
+
+-- 5.9. Extensible Tactics
+
+namespace ExtensibleTactics
+  -- Создадим свою тактику.
+  syntax "triv" : tactic
+
+  -- Собственная тактика это по сути набор существующих тактик,
+  -- они называются расширениями.
+
+  -- Пока что наша тактика triv это просто алиас для assumption.
+  macro_rules
+    | `(tactic| triv) => `(tactic| assumption)
+
+  example (h : p) : p := by
+    triv
+
+  -- Пока что не получится доказать рефлексивность с помощью нашей
+  -- самодельной тактики triv.
+
+  -- Error: Tactic `assumption` failed
+  -- example (x : α) : x = x := by
+  --   triv
+
+  -- Второе использование macro_rules расширяет нашу тактику
+  -- рефлексивностью отношения равенства.
+  -- Интепретатор тактик будет пробовать все такие "расширения"
+  -- нашей тактики пока не сработает какая-то из них.
+  macro_rules
+    | `(tactic| triv) => `(tactic| rfl)
+
+  -- Вот теперь доказывается.
+  example (x : α) : x = x := by
+    triv
+
+  example (x : α) (h : p) : x = x ∧ p := by
+    apply And.intro <;> triv
+
+  -- Можно добавлять рекурсивные расширения.
+  macro_rules | `(tactic| triv) => `(tactic| apply And.intro <;> triv)
+
+  -- Теперь все доказывается тривиально :)
+  example (x : α) (h : p) : x = x ∧ p := by
+    triv
+
+end ExtensibleTactics
+
+-- 5.10. Exercises
+
+-- Propositions and Proofs
+
+namespace Exercises_1
+  variable (p q r : Prop)
+
+  -- 1.a
+  example : p ∨ q ↔ q ∨ p := by
+    apply Iff.intro
+    · intro h
+      apply Or.elim h
+      · intro ev_p
+        apply Or.inr
+        exact ev_p
+      · intro ev_q
+        apply Or.inl
+        exact ev_q
+    · intro h
+      apply Or.elim h
+      · intro ev_q
+        apply Or.inr
+        exact ev_q
+      · intro ev_p
+        apply Or.inl
+        exact ev_p
+
+  -- 1.b
+  example : p ∨ q ↔ q ∨ p := by
+    constructor
+    repeat
+      intro
+      | Or.inl p => exact Or.inr p
+      | Or.inr q => exact Or.inl q
+
+  -- 2.a
+  example : p ∧ q ↔ q ∧ p := by
+    apply Iff.intro
+    · intro h
+      apply And.intro
+      · exact h.right
+      · exact h.left
+    · intro h
+      constructor
+      · exact h.right
+      · exact h.left
+
+  -- 2.b
+  example : p ∧ q ↔ q ∧ p := by
+    constructor
+    · intro h
+      constructor
+      case mp.right => exact h.left
+      case mp.left => exact h.right
+    · intro ⟨hq, hp⟩
+      exact ⟨hp, hq⟩
+
+  -- 2.c
+  example : p ∧ q ↔ q ∧ p := by
+    constructor
+    · intro | ⟨hp, hq⟩ => exact ⟨hq, hp⟩
+    · intro | ⟨hq, hp⟩ => exact ⟨hp, hq⟩
+
+  -- 2.d
+  example : p ∧ q ↔ q ∧ p := by
+    apply Iff.intro
+    · intro h
+      cases h
+      rename_i hp hq; exact ⟨hq, hp⟩
+    · intro h
+      cases h with | intro hq hp => exact ⟨hp, hq⟩
+
+  -- associativity of ∧ and ∨
+
+  -- 3.a
+  example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := by
+    apply Iff.intro
+    · intro ⟨⟨hp, hq⟩, hr⟩; exact ⟨hp, ⟨hq, hr⟩⟩
+    · intro ⟨hp, ⟨hq, hr⟩⟩; exact ⟨⟨hp, hq⟩, hr⟩
+
+  -- 3.b
+  example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := by
+    constructor
+    · intro | ⟨⟨hp, hq⟩, hr⟩ => exact ⟨hp, ⟨hq, hr⟩⟩
+    · intro | ⟨hp, ⟨hq, hr⟩⟩ => exact ⟨⟨hp, hq⟩, hr⟩
+
+  -- 4.a
+  example : (p ∨ q) ∨ r ↔ p ∨ (q ∨ r) := by
+    apply Iff.intro
+    · intro h
+      cases h with
+      | inl h_pq =>
+        cases h_pq with
+        | inl ev_p =>
+          apply Or.inl
+          exact ev_p
+        | inr ev_q =>
+          apply Or.inr; apply Or.inl
+          assumption
+      | inr h_r =>
+        let h_qr : q ∨ r := Or.inr h_r
+        exact Or.inr h_qr
+    · intro h
+      cases h
+      · rename_i h_p
+        exact (Or.inl (Or.inl h_p))
+      · rename_i h_qr
+        match h_qr with
+        | Or.inl ev_q =>
+          have h_pq : (p ∨ q) := Or.inr ev_q
+          exact Or.inl h_pq
+        | Or.inr ev_r => exact Or.inr ev_r
+
+  -- distributivity
+  example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+    sorry
+
+  -- other properties
+  example : (p → (q → r)) ↔ (p ∧ q → r) := by
+    sorry
+
+  example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := by
+    sorry
+
+  example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := by
+    sorry
+
+  example : ¬p ∨ ¬q → ¬(p ∧ q) := by
+    sorry
+
+  example : ¬(p ∧ ¬p) := by
+    sorry
+
+  example : p ∧ ¬q → ¬(p → q) := by
+    sorry
+
+  example : ¬p → (p → q) := by
+    sorry
+
+  example : (¬p ∨ q) → (p → q) := by
+    sorry
+
+  example : p ∨ False ↔ p := by
+    sorry
+
+  example : p ∧ False ↔ False := by
+    sorry
+
+  example : (p → q) → (¬q → ¬p) := by
+    sorry
+end Exercises_1
+
+namespace ExercisesClassical_1
+  open Classical
+
+  variable (p q r : Prop)
+
+  example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := by
+    sorry
+
+  example : ¬(p ∧ q) → ¬p ∨ ¬q := by
+    sorry
+
+  example : ¬(p → q) → p ∧ ¬q := by
+    sorry
+
+  example : (p → q) → (¬p ∨ q) := by
+    sorry
+
+  example : (¬q → ¬p) → (p → q) := by
+    sorry
+
+  example : p ∨ ¬p := by
+    sorry
+
+  example : (((p → q) → p) → p) := by
+    sorry
+
+end ExercisesClassical_1
+
+namespace ExercisesNonClassical_1
+  variable (p : Prop)
+
+  -- TODO: Prove without using classical logic.
+  example : ¬(p ↔ ¬ p) := by
+    sorry
+end ExercisesNonClassical_1
+
+-- Quantifies and Equality
+
+namespace Exercises_2
+  variable (α : Type) (p q : α → Prop)
+  variable (r : Prop)
+
+  example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) := by
+    sorry
+
+  example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) := by
+    sorry
+
+  -- В этом упражнении постарайся понять почему обратное недоказуемо.
+  example : (∀ x, p x) ∨ (∀ x, q x) → ∀ x, p x ∨ q x := by
+    sorry
+
+  -- Обратное не доказуемо потому что из разных иксов ты
+  -- можешь выбрать какой-то один, а наборот хуй там утонул.
+  example : ∀ x, p x ∨ q x → (∀ x, p x) ∨ (∀ x, q x) := by
+    sorry
+
+  example : α → ((∀ x : α, r) ↔ r) := by
+    sorry
+
+  open Classical
+
+  -- Одно из направлений требует классической логики.
+  example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := by
+    sorry
+
+  example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := by
+    sorry
+
+  example : (∀ x, r → p x) ↔ (r → ∀ x, p x) := by
+    sorry
+
+  -- Парадокс брадобрея (одна из интерпретаций парадокса Рассела)
+
+  variable (men : Type) (barber : men)
+  variable (shaves : men → men → Prop)
+
+  example (h : ∀ x : men, shaves barber x ↔ ¬ shaves x x) : False := by
+    sorry
+
+end Exercises_2
