@@ -33,7 +33,7 @@ namespace PropositionsAsTypes
   variable {q : Prop}
 
   theorem t1 : p → q → p :=
-    λ (hp : p) => λ (hq : q) => V
+    λ (hp : p) => λ (hq : q) => hp
 
   #print t1
 
@@ -184,8 +184,8 @@ namespace AuxiliarySubgoals
 
   example (h : p ∧ q) : q ∧ p :=
     have hp : p := h.left
-    suffices hq : q from And.intro hq hp
-    show q from And.right h
+    suffices hq : q from ⟨hq, hp⟩
+    show q from h.right
 
 end AuxiliarySubgoals
 

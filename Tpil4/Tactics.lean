@@ -198,7 +198,7 @@ example (x y : Nat) (h : x = y) : y = x := by
   apply Eq.symm
   assumption
 
--- Можно заменять произвольные выражения в цели,
+-- Можно заменять ggпроизвольные выражения в цели,
 -- используюя тактику generalize. Обобщение короче.
 example : 3 = 3 := by
   generalize 3 = x
@@ -367,8 +367,8 @@ cases m with
 | zero => exact h₀
 | succ m' => exact h₁ m'
 
--- Тактика contradiction сама ищет в контексте гипотезы
--- противоречащие цели.
+-- Тактика contradiction сама ищет в контексте
+-- гипотезы противоречащие цели.
 example (p q : Prop) : p ∧ ¬ p → q := by
   intro h
   cases h
@@ -673,7 +673,7 @@ attribute [local simp] Nat.mul_comm Nat.mul_assoc Nat.mul_left_comm
 attribute [local simp] Nat.add_assoc Nat.add_comm Nat.add_left_comm
 
 -- Звёздочка/вайлдкарт астериск указывает на то, что
--- мы хотим применить simpl ко всем гипотезам из контекста и к цели.
+-- мы хотим применить simp ко всем гипотезам из контекста и к цели.
 example (w x y z : Nat) (p : Nat → Prop)
         (h : p (x * y + z * w * x)) : p (x * w * z + y * x) := by
   simp at *; assumption
@@ -902,6 +902,8 @@ end ExtensibleTactics
 
 -- 5.10. Exercises
 
+-- Сделай столько, сколько по кайфу
+
 -- Propositions and Proofs
 
 namespace Exercises_1
@@ -1052,39 +1054,80 @@ namespace Exercises_1
 
   -- 5.b
   example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
-    sorry
+    constructor
+    · intro ⟨h_p, h_qr⟩
+      cases h_qr <;> first
+      | (apply Or.inl; apply And.intro) <;> assumption
+      | (apply Or.inr; apply And.intro) <;> assumption
+    · intro
+      | Or.inl ⟨h_p, h_q⟩ =>
+        have : q ∨ r := Or.inl h_q
+        exact ⟨h_p, this⟩
+      | Or.inr ⟨h_p, h_r⟩ =>
+        constructor
+        · assumption
+        · first
+          | apply Or.inl; assumption
+          | apply Or.inr; assumption
 
-  -- other properties
+  -- 6.a
   example : (p → (q → r)) ↔ (p ∧ q → r) := by
-    sorry
+    constructor
+    · intro h ⟨h_p, h_q⟩; apply h <;> assumption
+    · intro h h_p h_q; exact h ⟨h_p, h_q⟩
 
+  -- 7.a
   example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := by
-    sorry
+    constructor
+    · intro h
+      constructor
+      · intro ev; exact h (Or.inl ev)
+      · intro ev; exact h (Or.inr ev)
+    · intro ⟨h_pr, h_qr⟩
+      intro
+      | Or.inl h_p => exact h_pr h_p
+      | Or.inr h_q => exact h_qr h_q
 
+  -- 7.b
+  example : ((p ∨ q) → r) ↔ (p → r) ∧ (q → r) := by
+    constructor
+    · intro h; constructor <;> intro ev
+      repeat first | apply h (Or.inl ev) | apply h (Or.inr ev)
+    · intro ⟨h_pr, h_qr⟩ h_pq; apply Or.elim h_pq <;> assumption
+
+  -- 8.a
   example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := by
     sorry
 
+  -- 9.a
   example : ¬p ∨ ¬q → ¬(p ∧ q) := by
     sorry
 
+  -- 10.a
   example : ¬(p ∧ ¬p) := by
     sorry
 
+  -- 11.a
   example : p ∧ ¬q → ¬(p → q) := by
     sorry
 
+  -- 12.a
   example : ¬p → (p → q) := by
     sorry
 
+  -- 13.a
   example : (¬p ∨ q) → (p → q) := by
     sorry
 
+  -- 14.a
   example : p ∨ False ↔ p := by
     sorry
 
+  -- 15.a
   example : p ∧ False ↔ False := by
     sorry
 
+  -- 16.a
   example : (p → q) → (¬q → ¬p) := by
     sorry
 end Exercises_1
@@ -1094,32 +1137,78 @@ namespace ExercisesClassical_1
 
   variable (p q r : Prop)
 
+  -- 17.a
   example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := by
     sorry
 
+  -- left  ~ apply Or.inl
+  -- right ~ apply Or.inr
+
+  -- 18.a
   example : ¬(p ∧ q) → ¬p ∨ ¬q := by
-    sorry
+    intro h_npq
+    cases (em p) with
+    | inl h_p =>
+      apply Or.elim (em q)
+      · intro h_q
+        have : p ∧ q := ⟨h_p, h_q⟩
+        exact absurd this h_npq
+      · intro; right; assumption
+    | inr h_np => left; assumption
 
+  -- Пользуйся:
+  -- 1. simp?
+  -- 2. apply?
+  -- 3. show_term {tactic}
+
+  -- 19.a
   example : ¬(p → q) → p ∧ ¬q := by
-    sorry
+    intro h_npq
+    -- Как узнать что сделала simp:
+    -- simp? at h_npq
+    -- simp only [not_imp] at h_npq; assumption
+    -- exact Decidable.not_imp_iff_and_not.mp h_npq
+    exact not_imp.mp h_npq
 
+  -- 20.a
   example : (p → q) → (¬p ∨ q) := by
-    sorry
+    apply Or.elim (em p)
+    · intro h_p h_pq
+      right
+      exact h_pq h_p
+    · intro h_np h_pq
+      left
+      exact h_np
 
+  -- 21.a
   example : (¬q → ¬p) → (p → q) := by
-    sorry
+    intro h h_p
+    cases em q with
+    | inl h_q => assumption
+    | inr h_nq =>
+      have : ¬ p := h h_nq
+      exact absurd h_p this
 
+  -- 22.a
   example : p ∨ ¬p := by
-    sorry
+    apply em
 
+  -- 23.a
   example : (((p → q) → p) → p) := by
-    sorry
+    intro h
+    cases em (p → q) with
+    | inl h_pq => exact h h_pq
+    | inr h_npq =>
+      -- simp only [not_imp] at h_npq
+      rw [not_imp] at h_npq
+      exact h_npq.left
 
 end ExercisesClassical_1
 
 namespace ExercisesNonClassical_1
   variable (p : Prop)
 
+  -- 24.a
   -- TODO: Prove without using classical logic.
   example : ¬(p ↔ ¬ p) := by
     sorry
@@ -1131,33 +1220,151 @@ namespace Exercises_2
   variable (α : Type) (p q : α → Prop)
   variable (r : Prop)
 
+  -- 25.a
+  example : (∃ _ : α, r) → r := by
+    intro h
+    cases h with
+    | intro _ h_r => exact h_r
+
+  -- 25.b
+  example : (∃ _ : α, r) → r := by
+    intro ⟨x, h_r⟩; assumption
+
+  -- 26.a
+  example (a : α) : r → (∃ _ : α, r) := by
+    intros; exists a
+
+  -- 27.a
+  example : (∃ x, p x ∧ r) ↔ (∃ x, p x) ∧ r := by
+    constructor
+    · intro
+      | Exists.intro x h_pxr =>
+        exact ⟨⟨x, h_pxr.left⟩, h_pxr.right⟩
+    · intro ⟨⟨x, h_px⟩, h_r⟩
+      exists x
+
+  -- 28.a
+  example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) := by
+    constructor
+    · intro ⟨x, h⟩
+      cases h with
+      | inl h_px => left; exists x
+      | inr h_qx => right; exists x
+    · intro h
+      cases h with
+      | inl h_epx =>
+        cases h_epx with
+        | intro x h_px => exists x; left; exact h_px
+      | inr h_eqx =>
+        cases h_eqx with
+        | intro x h_qx => exists x; right; exact h_qx
+
+  -- 28.b
+  example : (∃ x, p x ∨ q x) ↔ (∃ x, p x) ∨ (∃ x, q x) := by
+    constructor
+    · intro ⟨x, h⟩
+      cases h with
+      | inl h_px => left; exists x
+      | inr h_qx => right; exists x
+    · intro h
+      cases h with
+      | inl h_epx =>
+        cases h_epx with
+        | intro x h_px =>
+          exists x; left; exact h_px
+      | inr h_eqx =>
+        cases h_eqx with
+        | intro x h_qx =>
+          exists x; right; exact h_qx
+
+  -- 29.a
+  example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) := by
+    constructor
+    · intro h
+      rw [not_exists]
+      simp only [Classical.not_not]
+      assumption
+    · intro h
+      rw [not_exists] at h
+      simp only [Classical.not_not] at h
+      assumption
+
+  -- 29.b
+  example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) := by
+    constructor <;> repeat
+    intro h
+    rw [not_exists] at *
+    simp only [Classical.not_not] at *
+    assumption
+
+  -- 29.c
+  example : (∀ x, p x) ↔ ¬ (∃ x, ¬ p x) := by
+    simp
+
+  -- 30.a
+  example : (∃ x, p x) ↔ ¬ (∀ x, ¬ p x) := by
+    constructor
+    repeat
+      intro h
+      rw [← not_exists] at *
+      simp only [Classical.not_not] at *
+      assumption
+
+  -- 31.a
+  example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := by
+    sorry
+
+  -- 32.a
+  example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := by
+    sorry
+
+  -- 33.a
+  example : (∀ x, p x → r) ↔ (∃ x, p x) → r := by
+    sorry
+
+  -- 34.a
+  example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r := by
+    sorry
+
+  -- 35.a
+  example (a : α) : (∃ x, r → p x) ↔ (r → ∃ x, p x) := by
+    sorry
+
+  -- 36.a
   example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) := by
     sorry
 
+  -- 37.a
   example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) := by
     sorry
 
+  -- 38.a
   -- В этом упражнении постарайся понять почему обратное недоказуемо.
   example : (∀ x, p x) ∨ (∀ x, q x) → ∀ x, p x ∨ q x := by
     sorry
 
+  -- 39.a
   -- Обратное не доказуемо потому что из разных иксов ты
   -- можешь выбрать какой-то один, а наборот хуй там утонул.
   example : ∀ x, p x ∨ q x → (∀ x, p x) ∨ (∀ x, q x) := by
     sorry
 
+  -- 40.a
   example : α → ((∀ x : α, r) ↔ r) := by
     sorry
 
   open Classical
 
+  -- 41.a
   -- Одно из направлений требует классической логики.
   example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := by
     sorry
 
+  -- 42.a
   example : (∀ x, p x ∨ r) ↔ (∀ x, p x) ∨ r := by
     sorry
 
+  -- 43.a
   example : (∀ x, r → p x) ↔ (r → ∀ x, p x) := by
     sorry
 
@@ -1166,13 +1373,21 @@ namespace Exercises_2
   variable (men : Type) (barber : men)
   variable (shaves : men → men → Prop)
 
+  #check ((and_not_self_iff (shaves barber barber)).mp :
+    shaves barber barber ∧ ¬shaves barber barber → False)
+
+  theorem paradox : ¬(a ↔ ¬a) := iff_not_self
+
+  -- 44.a
   example (h : ∀ x : men, shaves barber x ↔ ¬ shaves x x) : False := by
-    sorry
+    apply paradox
+    exact h barber
 
 end Exercises_2
 
 namespace Exercises_3
 
+  -- 45.a
   -- Получить доказательство в одну строчку.
   example (p q r : Prop) (hp : p)
           : (p ∨ q ∨ r) ∧ (q ∨ p ∨ r) ∧ (q ∨ r ∨ p) := by
