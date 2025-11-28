@@ -229,6 +229,7 @@ example (p q : Prop) : p ∨ q → q ∨ p := by
 -- ^ Порядок не важен
 
 -- Та же фигня, только в тактик-мод (без with).
+-- Только cases создаёт не именованные гипотезы.
 example (p q : Prop) : p ∨ q → q ∨ p := by
   intro h
   cases h
@@ -239,6 +240,7 @@ example (p q : Prop) : p ∨ q → q ∨ p := by
 
 -- Использование cases удобно в частности,
 -- если можно решить сразу несколько подцелей какой-то одной тактикой.
+-- Тактике assumption как раз всё равно, что гипотезы анонимные.
 example (p : Prop) : p ∨ p → p := by
   intro h
   cases h
@@ -389,7 +391,7 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
       constructor; exact hp; apply Or.inr; exact hr
 
 -- Можно делать то же самое (intro + match) за один шаг,
--- не именую гипотезу, тк мы её сразу же хотим разбирать.
+-- не именуя гипотезу, тк мы её сразу же хотим разбирать.
 example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
   apply Iff.intro
   . intro
@@ -470,7 +472,7 @@ example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
     apply Or.inr
     exact hpr
 
--- Если написать просто have : p ∧ q,
+-- Если написать have : p ∧ q := ... или have := ...,
 -- то эта гипотеза получит название this.
 -- Тип тоже можно не писать, т.е. можно вот так:
 
@@ -478,7 +480,7 @@ example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
   intro ⟨hp, hqr⟩
   cases hqr with
   | inl hq =>
-    have := And.intro hp hq -- << Вот так
+    have : p ∧ q := And.intro hp hq -- << Вот так
     apply Or.inl; exact this
   | inr hr =>
     have := And.intro hp hr -- << Вот так
@@ -514,20 +516,20 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
 -- 5.5. Tatic Combinators
 
 -- Простейший комбинатор тактик это ;
-example (p q : Prop) (hp : p) : p ∨ q :=
-  by apply Or.inl; assumption
+example (p q : Prop) (hp : p) : p ∨ q := by
+  apply Or.inl; assumption
 
 -- Комбинатор <;> мы уже видели.
 -- Это пиздато использовать, когда для всех подцелей,
 -- которые мы получили после применения тактики
 -- слева от комбинатора <;> можно применить тактику справа.
-example (p q : Prop) (hp : p) (hq : q) : p ∧ q :=
-  by constructor <;> assumption
+example (p q : Prop) (hp : p) (hq : q) : p ∧ q := by
+  constructor <;> assumption
 
 -- first | t₁ | t₂ | ... | tₙ
--- Комбинатор first применяет первую из тактик t₁, t₂, ..., tₙ
--- пока не получится это сделать, либо фейлится, если
--- не получилось применить ни одну из перечисленных.
+-- Комбинатор first пробует по очереди тактики t₁, t₂, ..., tₙ
+-- пока не получится применить одну из них, либо фейлится,
+-- если не получилось применить ни одну.
 
 -- Хуёвины разделённые ; он считает за одно применение тактики.
 
@@ -933,6 +935,13 @@ namespace Exercises_1
       | Or.inl p => exact Or.inr p
       | Or.inr q => exact Or.inl q
 
+  -- 1.c
+  example : p ∨ q ↔ q ∨ p := by
+    constructor
+    repeat intro h; cases h <;> first
+    | apply Or.inl; assumption
+    | apply Or.inr; assumption
+
   -- 2.a
   example : p ∧ q ↔ q ∧ p := by
     apply Iff.intro
@@ -942,8 +951,8 @@ namespace Exercises_1
       · exact h.left
     · intro h
       constructor
-      · exact h.right
-      · exact h.left
+      case left => exact h.right
+      case right => exact h.left
 
   -- 2.b
   example : p ∧ q ↔ q ∧ p := by
@@ -968,9 +977,22 @@ namespace Exercises_1
       cases h
       rename_i hp hq; exact ⟨hq, hp⟩
     · intro h
-      cases h with | intro hq hp => exact ⟨hp, hq⟩
+      cases h with
+      | intro hq hp => exact ⟨hp, hq⟩
 
-  -- associativity of ∧ and ∨
+  -- 2.e
+  example : p ∧ q ↔ q ∧ p := by
+    apply Iff.intro
+    repeat
+      intro h
+      cases h <;> constructor; repeat assumption
+
+  -- 2.f
+  example : p ∧ q ↔ q ∧ p := by
+    constructor <;> (intro h; cases h; constructor <;> assumption)
+
+  -- И intro и саses могут распаковать конструкторы
+  -- любого индуктивного типа, но ведут себя чуть по-разному.
 
   -- 3.a
   example : (p ∧ q) ∧ r ↔ p ∧ (q ∧ r) := by
@@ -1011,7 +1033,24 @@ namespace Exercises_1
           exact Or.inl h_pq
         | Or.inr ev_r => exact Or.inr ev_r
 
-  -- distributivity
+  -- 5.a
+  example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
+    constructor
+    · intro ⟨h_p, h_qr⟩
+      cases h_qr with
+      | inl h_q =>
+        apply Or.inl; exact ⟨h_p, h_q⟩
+      | inr h_r =>
+        apply Or.inr; exact ⟨h_p, h_r⟩
+    · intro
+      | Or.inl h_pq =>
+        have : q ∨ r := Or.inl h_pq.right
+        exact ⟨h_pq.left, this⟩
+      | Or.inr h_pr =>
+        have : q ∨ r := Or.inr h_pr.right
+        exact ⟨h_pr.left, this⟩
+
+  -- 5.b
   example : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
     sorry
 
@@ -1131,3 +1170,12 @@ namespace Exercises_2
     sorry
 
 end Exercises_2
+
+namespace Exercises_3
+
+  -- Получить доказательство в одну строчку.
+  example (p q r : Prop) (hp : p)
+          : (p ∨ q ∨ r) ∧ (q ∨ p ∨ r) ∧ (q ∨ r ∨ p) := by
+    sorry
+
+end Exercises_3
