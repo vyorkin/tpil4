@@ -568,6 +568,10 @@ example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
 
 -- Комбинатор any_goals t завершается успехом, если удалось применить
 -- тактику t хотя бы к одной из текущих подцелей.
+-- Это почти эквивалентно all_goals.
+-- any_goals tac = all_goals try tac, за исключением того, что
+-- any_goals зафейлится, если не удалось применить тактику
+-- хотя бы к одной цели/подцели.
 example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
   constructor
   any_goals constructor
@@ -1211,7 +1215,8 @@ namespace ExercisesNonClassical_1
   -- 24.a
   -- TODO: Prove without using classical logic.
   example : ¬(p ↔ ¬ p) := by
-    sorry
+    apply iff_not_self
+
 end ExercisesNonClassical_1
 
 -- Quantifies and Equality
@@ -1312,7 +1317,11 @@ namespace Exercises_2
 
   -- 31.a
   example : (¬ ∃ x, p x) ↔ (∀ x, ¬ p x) := by
-    sorry
+    constructor
+    repeat
+      intro h
+      rw [not_exists] at *
+      assumption
 
   -- 32.a
   example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := by
@@ -1347,7 +1356,7 @@ namespace Exercises_2
   -- Обратное не доказуемо потому что из разных иксов ты
   -- можешь выбрать какой-то один, а наборот хуй там утонул.
   example : ∀ x, p x ∨ q x → (∀ x, p x) ∨ (∀ x, q x) := by
-    sorry
+    sorry -- Нельзя доказать
 
   -- 40.a
   example : α → ((∀ x : α, r) ↔ r) := by
