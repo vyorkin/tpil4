@@ -1,9 +1,9 @@
 theorem test₀ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro
-  exact hp
-  apply And.intro
-  exact hq
-  exact hp
+  · exact hp
+  · apply And.intro
+    · exact hq
+    · exact hp
 
 -- Можно использовать apply везде, где сработает exact,
 -- но если можешь использовать exact, то лучше используй её.
@@ -11,16 +11,19 @@ theorem test₀ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
 -- Пруф-терм можно посмотеть вот так
 #print test₀
 
--- Применение составных выражений
+-- Вот такой охуенный пруф-терм ты смог сконструировать тактиками!
+-- Удивительно, да?
+
+-- Применение составных выражений.
 theorem test₁ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro hp
   apply And.intro hq hp
 
--- Пруф-терм получится такой же
+-- Пруф-терм получится такой же.
 #print test₁
 
 -- Можно применять сразу несколько тактик на одной строке,
--- разделяя точкой с запятой
+-- разделяя точкой с запятой.
 theorem test₂ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro hp; exact And.intro hq hp
 
@@ -28,11 +31,12 @@ theorem test₂ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
 -- тактики apply And.intro в самом верхнем примере (test₀).
 -- Это тэги, линь берёт их из названий параметров в определении And.intro.
 --
--- Так можно и самому структурировать свой доказательства,
+-- Так можно и самому структурировать свои доказательства,
 -- cast <tag> => <tactics>.
 
 theorem test₃ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro
+  -- · exact hp или тоже самое ниже:
   case left => exact hp
   case right =>
     apply And.intro
@@ -106,6 +110,15 @@ example (q p : α → Prop) : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x := by
   intro ⟨x, hpx, hqx⟩
   exact ⟨x, hqx, hpx⟩
 
+-- Вот кстати эквивалентный пример с использованием тактики obtain,
+-- тут в целом должно быть понятно, что она делает.
+-- Тоже работает и для дизъюнкции, только форма будет выглядеть как-то так:
+-- obtain a | b | c := h
+example (q p : α → Prop) : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x := by
+  intro h
+  obtain ⟨x, hpx, hqx⟩ := h
+  exact ⟨x, hqx, hpx⟩
+
 -- Паттерн-матчинг с помощью intro.
 example (q p : α → Prop) : (∃ x, p x ∨ q x) → ∃ x, q x ∨ p x := by
   intro
@@ -123,14 +136,15 @@ example (h₁ : x = y) (h₂ : y = z) (h₃ : z = w) : x = w := by
 -- Тактика assumption умеет унифицировать метапеременные.
 example (h₁ : x = y) (h₂ : y = z) (h₃ : z = w) : x = w := by
   apply Eq.trans -- x = ?b → ?b = w → x = w
-  assumption     -- Унифицирует case h₁: x = ?b, используя h₁: x = y
-  -- Остаётся доказать case h₂ : ?b = w, т.е. h₂ : y = w
-  apply Eq.trans -- y = ?h₂.b → ?h₂.b = w → y = w
-  assumption     -- Унифицирует case h₂.h₁: y = ?h₂.b, используя h₂ : y = z
-  assumption     -- Унификация z = w с помощью h₃
+  · assumption   -- Унифицирует case h₁: x = ?b, используя h₁: x = y
+  · -- Остаётся доказать case h₂ : ?b = w, т.е. h₂ : y = w (не путать с гипотезой h₂)
+    apply Eq.trans -- y = ?h₂.b → ?h₂.b = w → y = w
+    · assumption   -- Унифицирует case h₂.h₁: y = ?h₂.b, используя h₂ : y = z
+    · assumption   -- Унификация z = w с помощью h₃
 
--- Тактика intros забирает в конеткст всё и сама выбирает имена.
--- На сгенерированные имена ты никак не можешь ссылаться.
+-- Тактика intros забирает в контекст всё и сама выбирает имена.
+-- На сгенерированные имена ты никак не можешь ссылаться
+-- (если не переименовал с помощью rename_i, об этом ниже).
 example : ∀ a b c : Nat, a = b → a = c → c = b := by
   intros
   apply Eq.trans
@@ -138,7 +152,8 @@ example : ∀ a b c : Nat, a = b → a = c → c = b := by
   assumption
   assumption
 
--- Это можно обойти комбинатором unhygienic.
+-- Это можно обойти комбинатором unhygienic и тогда intros будет
+-- давать имена, на которые можно ссылаться.
 example : ∀ a b c : Nat, a = b → a = c → c = b := by unhygienic
   intros
   apply Eq.trans
@@ -160,6 +175,17 @@ example : ∀ a b c : Nat, a = b → a = c → c = b := by
 -- Работает для аргументов равных по определению.
 -- Например можно написать rfl вместо Eq.refl.
 example (y : Nat) : (λ x : Nat => 0) y = 0 := by
+  rfl
+
+/-
+rfl более мощная тактика, чем может показаться на первый взгляд.
+Хотя формулировка теоремы звучит как a = a, Lean позволяет использовать всё, что
+является равным этому типу по определению. Например, утверждение 2 + 2 = 4 доказывается
+при помощи rfl, потому что обе стороны одинаковы с точки зрения определённого равенства.
+-/
+
+-- Как видишь, rfl понимает a + b = c + d.
+example (y : Nat) : (λ _ : Nat => 0) y + 1 = 0 + 1 := by
   rfl
 
 -- repeat
@@ -184,7 +210,8 @@ example (x y : Nat) (h : x = y) : y = x := by
   assumption
 
 -- Тактика revert втащит в цель так же и всё, что зависит от втаскиваемого.
--- В данном случае это гипотеза h.
+-- В данном случае это гипотеза h : x = y. Ну просто потому, что для того,
+-- чтобы её определить нужно сначала определить что такое x, тк она от него зависит.
 example (x y : Nat) (h : x = y) : y = x := by
   revert x
   intros
@@ -198,8 +225,9 @@ example (x y : Nat) (h : x = y) : y = x := by
   apply Eq.symm
   assumption
 
--- Можно заменять ggпроизвольные выражения в цели,
--- используюя тактику generalize. Обобщение короче.
+-- Можно заменять произвольные выражения в цели,
+-- используя тактику generalize. Обобщение короче.
+-- Вот так можно сделать из 3 = 3 общее утвеждение о равенстве x = x.
 example : 3 = 3 := by
   generalize 3 = x
   revert x
@@ -212,6 +240,8 @@ example : 2 + 3 = 5 := by
   sorry
 
 -- Свои обобщения можно сохранять в контексте как гипотезы.
+-- Обобщаем цель, сохраняем это обобщение как гипотзу и
+-- переписываем обратно, перепсывая x на 3.
 example : 2 + 3 = 5 := by
   generalize h : 3 = x
   rw [← h]
@@ -233,10 +263,10 @@ example (p q : Prop) : p ∨ q → q ∨ p := by
 example (p q : Prop) : p ∨ q → q ∨ p := by
   intro h
   cases h
-  apply Or.inr
-  assumption
-  apply Or.inl
-  assumption
+  · apply Or.inr
+    assumption
+  · apply Or.inl
+    assumption
 
 -- Использование cases удобно в частности,
 -- если можно решить сразу несколько подцелей какой-то одной тактикой.
@@ -253,7 +283,7 @@ example (p : Prop) : p ∨ p → p := by
   intro h
   cases h <;> assumption
 
--- Хорошо комбинировать cases с тактикой case и
+-- Хорошо комбинировать cases с тактикой case и/или
 -- нотацией для фокусировки на подцели.
 
 -- Вот ниже всякие возможные варинты как
@@ -322,6 +352,9 @@ example (p q : Nat → Prop) : (∃ x, p x) → ∃ x, p x ∨ q x := by
   cases h with -- Появляется x и px в контексте
   | intro x px => constructor; apply Or.inl; exact px
 
+-- ^ Это немного надуманный пример, потому что лучше сделать вот так:
+--   intro ⟨x, px⟩
+
 -- Применение constructor к ∃ x, p x распаковывает
 -- конструктор этого квантора и создаёт в цели метапеременную вместо x.
 -- Дальше, когда мы показываем exact px, то ?x унифицируется с x.
@@ -342,9 +375,13 @@ example (p q : Nat → Prop) : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x := by
     cases hpq with
     | intro hp hq =>
       exists x
---     ^^^ Тут когда мы пишем exists x, линь вроде как
--- ищет в контексте требуемые в цели гипотезы.
+--     ^^^ Тут когда мы пишем exists x, линь
+--         ищет в контексте требуемые в цели гипотезы.
+--         Попробуй, например, написать exists y,
+--         линь попросит тебя предъявить q y ∧ p y.
 
+-- Раскидывам гипотезу конъюнкции до отдельных
+-- конъюнктов и пересобираем в обратном порядке.
 def swap_pair : α × β → β × α := by
   intro p
   cases p
@@ -361,14 +398,14 @@ open Nat
 
 -- С помощью cases можно и по натуральным числам Пеано матчиться.
 example (P : Nat → Prop)
-  (h₀ : P 0) (h₁ : ∀ n, P (succ n))
-  (m : Nat) : P m := by
+        (h₀ : P 0) (h₁ : ∀ n, P (succ n))
+        (m : Nat) : P m := by
 cases m with
 | zero => exact h₀
 | succ m' => exact h₁ m'
 
 -- Тактика contradiction сама ищет в контексте
--- гипотезы противоречащие цели.
+-- гипотезы противоречащие цели или друг другу.
 example (p q : Prop) : p ∧ ¬ p → q := by
   intro h
   cases h
