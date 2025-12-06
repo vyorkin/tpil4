@@ -215,12 +215,12 @@ namespace ClassicalLogic
 
   example (h : ¬¬p) : p :=
     byCases
-      (λ h1 : p => h1)
-      (λ h1 : ¬p => absurd h1 h)
+      (λ h1 : p ↦ h1)
+      (λ h1 : ¬p ↦ absurd h1 h)
 
   example (h : ¬¬p) : p :=
     byContradiction
-      (λ h1 : ¬p => h h1)
+      (λ h1 : ¬p ↦ h h1)
 
 end ClassicalLogic
 
