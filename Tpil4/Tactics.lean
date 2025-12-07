@@ -447,8 +447,11 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
 -- Можно комбинировать тактик-мод и прямое конструирование пруф-термов.
 example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
   intro h
+  -- Нихуясе, братик, ты тут пишешь exact, а дальше,
+  -- а дальше, начинаешь have-have и show .. by, нихуясе.
+  -- Как часто ты такое применяешь?
   exact
-    have hp  : p := h.left
+    have hp  : p     := h.left
     have hqr : q ∨ r := h.right
     -- Вот тут show это не просто "комментарий",
     -- тут именно требуется показать какой терм мы конструируем.
@@ -457,7 +460,6 @@ example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
       | inl hq => exact Or.inl ⟨hp, hq⟩
       | inr hr => exact Or.inr ⟨hp, hr⟩
 
--- Более наглядный пример.
 example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
   apply Iff.intro
   · intro h
@@ -470,6 +472,7 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
     | inr hpr => exact ⟨hpr.left, Or.inr hpr.right⟩
 
 -- Можно использовать show как "комментарий".
+-- Ну т.е. не как сабтактику, не show .. by внутри чего-то (типа exact).
 example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
   apply Iff.intro
   · intro h
