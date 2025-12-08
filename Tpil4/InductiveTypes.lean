@@ -214,18 +214,57 @@ def snd {α : Type u} {β : Type v} (p : Prod α β) : β :=
 -- Конструирует тебе чётное или нечётное число, в зависимости от
 -- того что слева у этой пары:
 
+#check Prod.casesOn
+
+-- Prod.casesOn.{w, u, v}
+--   {α : Type u}
+--   {β : Type v}
+--
+--   {motive : Prod α β → Sort w}
+--
+--   (p : Prod α β)
+--   (mk : (a : α) → (b : β) → motive (Prod.mk a b))
+--
+--   : motive p
+
+-- Думай об этой функции, как об elimination rule.
+--
+-- Ф-ция mk берёт оба параметра единственного конструктора,
+-- создаёт тип-произведение и возвращает `motive p`.
+--
+-- `motive p` это то, что надо вернуть и это зависимая функция,
+-- которая принимает некоторое значение типa-произведения (p : Prod α β) и
+-- возвращает некоторый тип.
+--
+-- Она вполне может выглядеть так, как в примере ниже,
+-- т.е. как const может игнорировать свой аргумент.
+
 def prod_example (p : Prod Bool Nat) : Nat :=
   Prod.casesOn (motive := fun _ => Nat) p
     (fun b n => cond b (2 * n) (2 * n + 1))
 
--- Тут (motive := fun _ => Nat) используется, чтобы сообщить тип
--- конструируемого объекта. Да, это функция, потому что тип может зависить
--- от значения Prod Bool Nat.
---
+-- Тут зависимая функция (motive := fun _ => Nat) используется,
+-- чтобы сообщить тип конструируемого объекта.
+-- Да, это функция, потому что тип может зависить от значения Prod Bool Nat.
 -- А cond это типа: if b the (2 * n) else (2 * n + 1)
 
 #eval prod_example (Prod.mk true 3)
 #eval prod_example (Prod.mk false 3)
+
+-- Sum.casesOn.{w, u, v}
+--   {α : Type u}
+--   {β : Type v}
+--
+--   {motive : Sum α β → Sort w}
+--
+--   (t : Sum α β)
+--
+--   (inl : (a : α) → motive (Sum.inl a))
+--   (inr : (a : α) → motive (Sum.inr a))
+--
+--   : motive t
+
+-- Для каждого конструктора исходного типа будет своя introduction-функция.
 
 def sum_example (s : Sum Nat Nat) : Nat :=
   Sum.casesOn (motive := fun _ => Nat) s
@@ -355,6 +394,10 @@ inductive Exists {α : Sort u} (p : α → Prop) : Prop where
 --   And      ≅   Prod
 --    Or      ≅   Sum
 -- ∃ x : α p  ≅   Σ x, α, β
+
+-- Да exists x, P x изоморфен зависимой функции:
+-- λ (x : Nat) => (x + 0 = x : P)
+-- "Дай мне х и я верну для тебя утверждение о нём".
 
 -- Есть ещё одна забавная штука -- "подтип".
 -- По сути это все такие элементы x : α из Type u, для
@@ -626,3 +669,249 @@ theorem length_correct (as bs : List α) :
 end List
 
 end My13
+
+namespace My14
+
+inductive BinaryTree where
+  | leaf : BinaryTree
+  | node : BinaryTree → BinaryTree → BinaryTree
+
+-- Countably branching tree
+inductive CBTree where
+  | leaf : CBTree
+  | sup : (Nat → CBTree) → CBTree
+
+namespace CBTree
+def succ (t : CBTree) : CBTree :=
+  sup (fun _ => t)
+
+def toCBTree : Nat → CBTree
+  | 0 => leaf
+  | n + 1 => succ (toCBTree n)
+
+def omega : CBTree :=
+  sup toCBTree
+
+end CBTree
+
+end My14
+
+namespace My15
+
+example (p : Nat → Prop)
+        (hz : p 0)
+        (hs : ∀ n, p (Nat.succ n)) :
+        ∀ n, p n := by
+  intro n
+  cases n
+  · exact hz
+  · apply hs
+
+open Nat
+
+example (n : Nat) (h : n ≠ 0) : succ (pred n) = n := by
+  cases n with
+  | zero =>
+    apply absurd rfl h
+  | succ m =>
+    rfl
+
+-- С помощью cases можно и функции определять,
+-- которые зависят от какие-то индуктивных аргументов.
+
+def f (n : Nat) : Nat := by
+  cases n
+  · exact 3
+  · exact 7
+
+example : f 0 = 3 := rfl
+
+example : f   5 = 7 := rfl
+example : f  51 = 7 := rfl
+example : f 151 = 7 := rfl
+
+end My15
+
+namespace My16
+def Tuple (α : Type) (n : Nat) :=
+  { as : List α // as.length = n }
+
+def f {n : Nat} (t : Tuple α n) : Nat := by
+  cases n -- Кейсим по длине тапла
+  · exact 3
+  · exact 7 -- Для любого кортежa не нулевой длины
+
+def myTuple : Tuple Nat 3 := ⟨[0, 1, 2], rfl⟩
+
+example : f myTuple = 7 := rfl
+
+-- Тактики для работы с индуктивными типами.
+
+-- 1. cases
+
+inductive Foo where
+  | bar1 : Nat → Nat → Foo
+  | bar2 : Nat → Nat → Nat → Foo
+
+def silly₀ (x : Foo) : Nat := by
+  cases x with
+  | bar2 c d e => exact e
+  | bar1 a b   => exact b
+
+-- Либо тоже самое, но используя тактику.
+def silly₁ (x : Foo) : Nat := by
+  cases x
+  -- Тактика case поймёт какую подцель нужно доказывать
+  -- в каждом из случаев по используемому конструктору.
+  case bar2 c d e => exact e
+  case bar1 a b   => exact b
+
+open Nat
+
+-- Тактика cases умеет работать и с произвольными выражениями.
+example (p : Nat → Prop)
+        (hz : p 0)
+        (hs : ∀ n, p (succ n))
+        (m k : Nat) :
+        p (m + 3 * k) := by
+  cases m + 3 * k -- generalize m + 3 * k = n; cases n
+  · exact hz
+  · apply hs
+
+-- Можно o `cases m + 3 * k` думать как о
+-- команде доказать отдельно следующие 2 факта:
+-- 1. m + 3 * k = 0
+-- 2. m + 3 * k = succ n
+
+-- Использование cases m + 3 * k эквивалентно этим 2 строчкам:
+-- generalize m + 3 * k = n
+-- cases n
+
+-- Когда выражение, которое хочется раскидать по кейсам не вcтречается
+-- в цели, cases создаёт нам в контексте гипотезу по этому выражению.
+example (p : Prop) (m n : Nat)
+        (h₁ : m < n → p)
+        (h₂ : m ≥ n → p) : p := by
+  cases Nat.lt_or_ge m n
+  · case inl hlt => exact h₁ hlt
+  · case inr hge => exact h₂ hge
+
+-- ^ Это эквивалетно следующему:
+example (p : Prop) (m n : Nat)
+        (h₁ : m < n → p) (h₂ : m ≥ n → p) : p := by
+  have h : m < n ∨ m ≥ n := Nat.lt_or_ge m n
+  cases h
+  case inl hlt => exact h₁ hlt
+  case inr hge => exact h₂ hge
+
+#check Nat.sub_self
+
+-- Это по сути то же самое:
+--
+-- 1.
+-- open Classical
+-- em (m = n)
+--
+-- 2.
+-- Decidable.em (m = n)
+
+-- Ещё пример:
+example (m n : Nat) : m - n = 0 ∨ m ≠ n := by
+  cases Decidable.em (m = n) with
+  | inl heq =>
+    rw [heq]
+    apply Or.inl
+    exact Nat.sub_self n
+  | inr hne =>
+    exact Or.inr hne
+
+end My16
+
+-- 2. induction
+
+namespace My17
+
+theorem zero_add₀ (n : Nat) : 0 + n = n := by
+  induction n with
+  | zero => rfl
+  | succ n ih => rw [Nat.add_succ, ih]
+
+theorem zero_add₁ (n : Nat) : 0 + n = n := by
+  induction n
+  · case zero => rfl
+  · case succ n ih => rw [Nat.add_succ, ih]
+
+-- The induction tactic supports user-defined
+-- induction principles with multiple targets.
+
+-- NOTE: Я оставляю этот материал не пройденным сознательно.
+-- TODO: Вернуться сюда, когда мне потребуется более глубокое понимание.
+
+-- Кастомизируемая индукция для операции остатка от деления.
+#check Nat.mod.inductionOn
+
+-- {motive : Nat → Nat → Sort u} →
+-- (x y : Nat) →
+-- ((x y : Nat) → 0 < y ∧ y ≤ x → motive (x - y) y → motive x y) →
+-- ((x y : Nat) → ¬(0 < y ∧ y ≤ x) → motive x y) →
+-- motive x y
+
+example (x : Nat) {y : Nat} (h : y > 0) : x % y < y := by
+  induction x, y using Nat.mod.inductionOn with
+  | ind x y h₁ ih =>
+    sorry
+  | base x y h₁ =>
+    sorry
+
+end My17
+
+-- 3. injection
+
+namespace My18
+
+open Nat
+
+-- Элементы индуктивного типа свободно порождаются,
+-- то есть конструкторы инъективны и имеют непересекающиеся
+-- области значений. Тактика injection разработана специально для того,
+-- чтобы использовать этот факт (инъективности).
+
+example (m n k : Nat) (h : succ (succ m) = succ (succ n)) : n + k = m + k := by
+  injection h with h'
+  injection h' with h''
+  rw [h'']
+
+-- Тактика injection так же умеет обнаруживать противоречия в контексте:
+example (m n : Nat) (h : succ m = 0) : n = n + 7 := by
+  injection h
+
+-- То же самое более явно c помощью тактики contradiction:
+example (m n : Nat) (h : succ m = 0) : n = n + 7 := by
+  contradiction
+
+example (h : 7 = 4) : False := by
+  contradiction
+
+end My18
+
+-- TODO: Inductive Families etc
+
+-- TODO: Exercises
+
+-- 1.
+-- Define an inductive data type consisting of
+-- terms built up from the following constructors:
+--
+-- const n, a constant denoting the natural number n
+-- var n, a variable, numbered n
+-- plus s t, denoting the sum of s and t
+-- times s t, denoting the product of s and t
+
+-- 2.
+-- Recursively define a function that evaluates any
+-- such term with respect to an assignment of values to the variables.
+-- Similarly, define the type of propositional formulas,
+-- as well as functions on the type of such formulas:
+-- an evaluation function, functions that measure the
+-- complexity of a formula, and a function that
+-- substitutes another formula for a given variable.
