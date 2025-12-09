@@ -268,6 +268,7 @@ example (x y : Nat) : (x + y) * (x + y) = x * x + y * x + x * y + y * y := by
   simp [Nat.mul_add, Nat.add_mul, Nat.add_assoc]
 
 namespace ExistentialQuantifier
+
   example : ∃ x : Nat, x > 0 :=
     have h : 1 > 0 := Nat.zero_lt_succ 0
     Exists.intro 1 h

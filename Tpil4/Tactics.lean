@@ -350,7 +350,10 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
 example (p q : Nat → Prop) : (∃ x, p x) → ∃ x, p x ∨ q x := by
   intro h
   cases h with -- Появляется x и px в контексте
-  | intro x px => constructor; apply Or.inl; exact px
+  | intro x px =>
+    constructor
+    apply Or.inl
+    exact px
 
 -- ^ Это немного надуманный пример, потому что лучше сделать вот так:
 --   intro ⟨x, px⟩
@@ -365,7 +368,10 @@ example (p q : Nat → Prop) : (∃ x, p x) → ∃ x, p x ∨ q x := by
 example (p q : Nat → Prop) : (∃ x, p x) → ∃ x, p x ∨ q x := by
   intro h
   cases h with
-  | intro x px => exists x; apply Or.inl; exact px
+  | intro x px =>
+    exists x
+    apply Or.inl
+    exact px
 
 -- Ещё пример.
 example (p q : Nat → Prop) : (∃ x, p x ∧ q x) → ∃ x, q x ∧ p x := by
