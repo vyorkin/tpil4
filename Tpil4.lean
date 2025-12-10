@@ -2,6 +2,7 @@ import Tpil4.DependentTypeTheory
 import Tpil4.PropositionsAndProofs
 import Tpil4.QuantifiersAndEquality
 import Tpil4.Tactics
+import Tpil4.TacticsExtra
 import Tpil4.InteractingWithLean
 import Tpil4.InductiveTypes
 import Tpil4.InductionAndRecursion

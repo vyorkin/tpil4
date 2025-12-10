@@ -8,8 +8,11 @@ theorem test₀ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
 -- Можно использовать apply везде, где сработает exact,
 -- но если можешь использовать exact, то лучше используй её.
 
--- Пруф-терм можно посмотеть вот так
+-- Пруф-терм можно посмотеть вот так:
 #print test₀
+--
+-- test₀ : ∀ (p q : Prop), p → q → p ∧ q ∧ p :=
+--   fun p q hp hq ↦ ⟨hp, ⟨hq, hp⟩⟩
 
 -- Вот такой охуенный пруф-терм ты смог сконструировать тактиками!
 -- Удивительно, да?
@@ -19,11 +22,11 @@ theorem test₁ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro hp
   apply And.intro hq hp
 
--- Пруф-терм получится такой же.
+-- Пруф-терм получится такой же в точности.
 #print test₁
 
--- Можно применять сразу несколько тактик на одной строке,
--- разделяя точкой с запятой.
+-- Можно применять сразу несколько тактик
+-- на одной строке, разделяя точкой с запятой.
 theorem test₂ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
   apply And.intro hp; exact And.intro hq hp
 
@@ -99,10 +102,14 @@ example (α : Type) : α → α := by
   intro a
   exact a
 
+-- def rfl {α : Sort u} {a : α} : Eq a a := Eq.refl a
+
 example (α : Type) : ∀ x : α, x = x := by
   intro x
   exact Eq.refl x
+  -- exact rfl
   -- rfl
+  -- apply_rfl
 
 -- Тактика intro позволяет разбирать и
 -- затаскивать в контекст гипотезу по кусочкам.
