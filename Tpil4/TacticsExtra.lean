@@ -102,7 +102,7 @@ example (P Q R : Prop)
         (h_bad : R → False) : R := by
   solve_by_elim [-h_bad]
 
--- 2. tauto
+-- tauto
 --
 -- tauto — это "финишная" тактика для пропозиционки:
 -- она механически раскидывает (∧, ∨, ↔, ∃) в гипотезах и цели и пытается доказать
@@ -186,3 +186,18 @@ example (α : Type)
         (P : α → Prop)
         (a : α) :
         (∀ x, P x) → P a := by tauto
+
+-- rwa = rw + assumption
+
+-- TODO: observe
+
+-- TODO: decide
+
+-- Тактики-подсказки:
+
+-- hint
+-- apply?
+-- exact?
+-- simp?
+
+-- See also (simple made hard): https://rkirov.github.io/posts/lean2/
