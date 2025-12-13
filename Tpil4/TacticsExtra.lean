@@ -43,12 +43,10 @@ example (a b : ℝ) : a - b = a + -b := by rfl
 
 example : (2 : ℝ) + 2 = 4 := by norm_num
 example : (12345.2 : ℝ) ≠ 12345.3 := by norm_num
--- example : 123456789 + 987654321 = 1111111110 := by norm_num
+example : 123456789 + 987654321 = 1111111110 := by norm_num
 example (R : Type*) [Ring R] : (2 : R) + 2 = 4 := by norm_num
-example (F : Type*) [LinearOrderedField F] : (2 : F) + 2 < 5 := by norm_num
--- example : Nat.Prime (2^13 - 1) := by norm_num
--- example : ¬ Nat.Prime (2^11 - 1) := by norm_num
-
+example : Nat.Prime (2^13 - 1) := by norm_num
+example : ¬ Nat.Prime (2^11 - 1) := by norm_num
 
 -- solve_by_elim
 
