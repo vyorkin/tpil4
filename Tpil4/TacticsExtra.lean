@@ -253,10 +253,100 @@ example (α : Type)
         (∀ x, P x) → P a := by tauto
 
 -- rwa = rw + assumption
+-- TODO: erw = ?
 
 -- TODO: observe
 
 -- TODO: decide
+
+-- TODO: rcases
+
+-- TODO: next
+-- net => tac focuses on the next goal and solves it using tac,
+-- or else fails. next x₁ ... xₙ => tac additionally renames
+-- the n most recent hypotheses with inaccessible names to the given names.
+
+-- unfold
+--
+-- Раскрывает определения (def).
+--
+-- Пример:
+--
+-- example (mf : Monotone f) (mg : Monotone g) : Monotone (fun x ↦ f x + g x) := by
+--   unfold Monotone
+--   intro a
+--   intro b
+--   ...
+
+-- linarith
+-- (Тактика ring сильнее, чем linarith)
+--
+-- Умеет работать только с линейными комбинациями (не)равенств:
+-- Сумма/разность переменных, умноженных на константы, сравнивается с
+-- другой такой же линейной комбинацией или числом. Поэтому перед
+-- вызовом linarith нужно преобразовать цель и нужные гипотезы так,
+-- чтобы они стали явными линейными (не)равенствами по переменным
+-- (убрать abs, дроби, переписать через уже известные леммы и т.п.).
+-- После того как цель и контекст приведены к такой линейной форме,
+-- linarith уже сам автоматически выводит нужное неравенство или противоречие.
+
+-- Что делает:
+--
+-- 1. Работает с выражениями вида `a₁x₁ + ... + aₙxₙ R b`,
+--    где R это какое-то отношение: R ∈ {<, ≤, =},
+--    выражение должно быть над типами вроде ℚ, ℝ, ℤ, ℕ
+--    (ну и вообще мб над любыми типами из тайпкласса LinearOrderedCommRing).​
+--    Такие выражения называются линейными (не)равенствами.
+--
+-- 2. Использует все подходящие _линейные_ гипотезы в контексте, чтобы доказать цель.
+
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Tactic/Linarith/Frontend.html
+-- https://www.leanexplore.com/?q=linarith
+-- https://www.sayantankhan.io/learn-lean-4.html
+
+-- Примеры:
+--
+-- Пример 1: "склейка" неравенств.
+-- Линейная цепочка: x ≤ 3 ≤ 5 => x ≤ 5
+example (x : ℚ) (h1 : x ≤ 3) (h2 : 3 ≤ 5) : x ≤ 5 := by linarith
+
+-- Пример 2: доказать невозможность (False).
+example (x : ℚ) (h1 : x ≥ 2) (h2 : x ≤ 1) : False := by
+  linarith
+
+-- Пример 3: использовать цель как линейное неравенство.
+example (x ε : ℝ) (hε : 0 < ε) (h1 : x < ε / 2) (h2 : -x < ε / 2) : |x| < ε := by
+  rw [abs_lt]     -- Цель: -ε < x ∧ x < ε
+  constructor <;> -- Две цели: -ε < x и x < ε
+  linarith
+
+-- Пример 4: уравнение + неравенство, всё в перемешку.
+example (x y : ℚ)
+    (h1 : x + y = 10)
+    (h2 : x ≥ 3)
+    (h3 : y ≥ 8) : False := by
+  -- Из x + y = 10 и x ≥ 3, y ≥ 8 следует 10 ≥ 11 – противоречие.
+  linarith
+
+-- dsimp
+--
+-- The dsimp tactic is the definitional simplifier.
+-- It is similar to simp but only applies theorems that hold by reflexivity.
+-- Thus, the result is guaranteed to be definitionally equal to the input.
+
+-- TODO: field_simp
+
+-- TODO: congr
+
+-- TODO: gcongr
+
+-- TODO: choose
+
+-- TODO: aesop
+
+-- TODO: Nat.le_induction
+
+-- TODO: Nat.strong_induction
 
 -- Тактики-подсказки:
 
@@ -264,5 +354,6 @@ example (α : Type)
 -- apply?
 -- exact?
 -- simp?
+-- rw?
 
 -- See also (simple made hard): https://rkirov.github.io/posts/lean2/
