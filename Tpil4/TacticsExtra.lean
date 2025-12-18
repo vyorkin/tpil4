@@ -344,7 +344,24 @@ example (x y : ℚ)
 
 -- TODO: gcongr
 
--- TODO: push_neg
+-- push_neg
+--
+-- It is often tedious to work with compound statements with a
+-- negation in front, and it is a common mathematical pattern to
+-- replace such statements with equivalent forms in which
+-- the negation has been pushed inward. To facilitate this,
+--
+-- Mathlib offers a push_neg tactic, which restates the goal in this way.
+-- The command push_neg at h restates the hypothesis h.
+
+-- Тактика push_neg позволяет избавиться от отрицания перед некоторым утверждением.
+-- Она убирает отрицание в гипотезе h, заменяя h на эквивалентное утверждение,
+-- в котором его нет. Например:
+-- ¬∀ (a : ℝ), ∃ x, f x > a => ∃ a, ∀ (x : ℝ), f x ≤ a
+
+example {f : ℝ → ℝ} (h : ¬∀ a, ∃ x, f x > a) : ∃ a, ∀ (x : ℝ), f x ≤ a := by
+  push_neg at h
+  exact h
 
 -- TODO: choose
 
