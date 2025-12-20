@@ -136,7 +136,7 @@ example (p q r : Prop) : (p → q) → (q → r) → (p → r) := by
 -- Рассмотрим несколько примеров:
 
 -- a) Прямое использование единственной гипотезы из контекста:
-example (P Q : Prop) (h : P) : P := by solve_by_elim
+example (P : Prop) (h : P) : P := by solve_by_elim
 -- ^ Здесь цель P, в контексте есть гипотеза h : P,
 -- тактика просто делает apply h и цель закрывается сразу.
 
@@ -265,6 +265,30 @@ example (α : Type)
 
 -- TODO: rcases
 
+-- by_cases
+--
+-- Тактика by_cases h : P делает тоже самое, что и cases em P.
+-- Только в отличии от cases em P, она позвляет дать название
+-- гипотезе, которая будет включена в каждую ветку.
+-- Если не указать своё имя, то линь назовёт эту гипотезу h.
+
+-- Пример:
+--
+-- cases em (исключённое третье).
+example (P : Prop) : ¬¬P → P := by
+  intro h
+  cases em P
+  · assumption
+  · contradiction
+
+-- А вот альтернативное док-во с использованием by_cases.
+example (P : Prop) : ¬¬ P → P := by
+  intro h
+  by_cases h' : P
+  · assumption
+  · contradiction
+
+
 -- TODO: next
 -- net => tac focuses on the next goal and solves it using tac,
 -- or else fails. next x₁ ... xₙ => tac additionally renames
@@ -281,6 +305,13 @@ example (α : Type)
 --   intro a
 --   intro b
 --   ...
+--
+-- Иногда всё таки лучше использовать simp only [Definition].
+--
+-- Вот пример случая, когда это лучше справляется с задачей:
+--
+-- example (h : (m ∣ n) ∨ (m ∣ k)) : m ∣ n * k := by
+--   simp only [Dvd.dvd] at *
 
 -- linarith
 -- (Тактика ring сильнее, чем linarith)
@@ -343,6 +374,20 @@ example (x y : ℚ)
 -- TODO: congr
 
 -- TODO: gcongr
+
+-- convert
+--
+-- Берёт терм и пытается подогнать его тип к текущей цели, достраивая
+-- равенства на всех местах, где тип e и цель отличаются
+-- по структуре (через тактику congr!). При этом она рекурсивно идёт по
+-- синтаксическому дереву термов и генерирует подцели для несоответствующих подвыражений.
+
+
+-- ext
+--
+-- Тактика ext применяет леммы об экстенсиональности, которые
+-- помечены аттрибутом @[ext].
+-- TODO: На самом деле она более мощная.
 
 -- push_neg
 --
