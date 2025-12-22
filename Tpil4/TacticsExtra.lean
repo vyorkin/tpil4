@@ -274,6 +274,13 @@ example (α : Type)
 
 -- Можно использовать к дизъюнкцией.
 --
+-- example : s ∪ (⋂ i, A i) = ⋂ i, A i ∪ s := by
+--   ext x
+--   constructor
+--   · rintro (hxs | hxai) -- Cкобки обязательные
+--     ...
+--
+--
 -- rintro ⟨hl | hr, h'⟩
 -- · ... proof using hl
 -- · ... proof using hr
@@ -339,7 +346,9 @@ example (P : Prop) : ¬¬P → P := by
 --   simp only [Dvd.dvd] at *
 
 -- linarith
--- (Тактика ring сильнее, чем linarith)
+--
+-- Доказывает равенство или неравенство в цели или
+-- находит противоречие среди гипотез в контексте.
 --
 -- Умеет работать только с линейными комбинациями (не)равенств:
 -- Сумма/разность переменных, умноженных на константы, сравнивается с
@@ -358,7 +367,8 @@ example (P : Prop) : ¬¬P → P := by
 --    (ну и вообще мб над любыми типами из тайпкласса LinearOrderedCommRing).​
 --    Такие выражения называются линейными (не)равенствами.
 --
--- 2. Использует все подходящие _линейные_ гипотезы в контексте, чтобы доказать цель.
+-- 2. Использует все подходящие _линейные_ гипотезы в контексте, чтобы
+--    доказать цель или найти противоречие среди гипотез.
 
 -- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Tactic/Linarith/Frontend.html
 -- https://www.leanexplore.com/?q=linarith
@@ -532,7 +542,11 @@ example (x : ℝ) (h : ∀ ε > 0, x ≤ ε) : x ≤ 0 := by
 -- hint
 -- apply?
 -- exact?
--- simp?
+
+-- TODO: simp
+--
+-- simp [-h] означает используй все леммы помеченные атрибутом @[simp], кроме h
+
 -- rw?
 
 -- See also (simple made hard): https://rkirov.github.io/posts/lean2/
