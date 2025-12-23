@@ -2,6 +2,9 @@ import Mathlib
 
 -- Полезные ссылки:
 --
+-- Читщит со множеством тактик:
+-- https://www.ma.imperial.ac.uk/~buzzard/xena/formalising-mathematics-2024/Part_C/Part_C.html
+--
 -- https://leanprover.github.io/reference/tactics.html
 --
 -- В этой части рассмотрим несколько новых тактик, которые мы не обсуждали,
@@ -456,6 +459,10 @@ end
 -- по структуре (через тактику congr!). При этом она рекурсивно идёт по
 -- синтаксическому дереву термов и генерирует подцели для несоответствующих подвыражений.
 
+-- TODO: exists
+--
+-- exists e₁, e₂, ... is shorthand for refine ⟨e₁, e₂, ...⟩; try trivial.
+-- It is useful for existential goals.
 
 -- ext
 --
