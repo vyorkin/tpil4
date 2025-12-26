@@ -258,8 +258,8 @@ def ite
     (t f : α) : α :=
   h.casesOn
     (motive := fun _c => α) -- Decidable c -- condition
-    (fun _hnc => f) -- ветка true
-    (fun _hc  => t) -- ветка false
+    (fun _hnc => f) -- ветка false
+    (fun _hc  => t) -- ветка true
 
 -- В dite (dependent if then else) аргументы это функции,
 -- а в ite аргументы это значения.
