@@ -533,13 +533,134 @@ example {f : ℝ → ℝ} (h : ¬∀ a, ∃ x, f x > a) : ∃ a, ∀ (x : ℝ), 
   push_neg at h
   exact h
 
--- choose
+-- guard_hyp
+--
+-- Тактика для проверки гипотезы на соответствие ожидаемому типу или
+-- значению с разными режимами равенства.
+--
+-- Синтаксис для типов:
+--
+-- guard_hyp h : t - Проверяет тип гипотезы h на соответствие типу t,
+--                   используя режим reducible defeq с t (раскрывает определения)
+-- guard_hyp h :~ t - Использует default defeq (полная конверсия с вычислениями)
+-- guard_hyp h :ₛ t — Syntactic equality (точное совпадение синтаксиса)
+-- guard_hyp h :ₐ t — Alpha equality (игнорирует имена связанных переменных)
+-- ​
+-- Синтаксис для значений:
+--
+-- guard_hyp h := v - Проверяет значение h на reducible defeq с v,
+--                    где v разбирается по типу h.
+-- Аналогично для:
+-- :=~ v - default defeq
+-- :=ₛ v - syntactic
+-- :=ₐ v - alpha
+--
+-- Тактика фейлится, если проверка не проходит, без изменения состояния цели.
+--
+-- Значение терминов:
+--
+-- Defeq - определимая равносильность
+--   reducible — С разворачиванием определений
+--   default — С β/δ-редукцией
+-- Syntactic eq - Синтаксическое равенство
+-- Alpha eq - α-равенство (по именам связанных переменных)
+--
+-- Примеры:
+
+example (h : Nat) : Nat := by
+  guard_hyp h : Nat  -- h имеет тип Nat
+  exact h
+
+def foo (n : Nat) : Nat := if n = 0 then 42 else 0
+
+example : True := by
+  let h := 42
+  guard_hyp h := 42 -- значение в let binding
+  trivial
+
+example : True := by
+  let h : Nat → Nat := id
+  guard_hyp h : Nat → Nat := id  -- тип + значение
+  trivial
+
+--
+-- См. примеры ниже для choose.
+
+-- choose:
+--
+-- Позволяет избавиться от вложенного квантора существования.
+--
+-- `choose g hg using h`:
+-- Вводит новую ф-цию g и заменяет h на гипотезу hg, в которой нет ∃ x, а
+-- вместо него - функция, которая возвращает x : X, аргументами которой будут
+-- все переменные + предикаты из квантора всеобщности.
 --
 -- https://www.ma.imperial.ac.uk/~buzzard/xena/formalising-mathematics-2024/Part_C/tactics/choose.html
+--
+-- Проще понять на примерах.
+--
+-- Примеры:
 
+-- Пример 1:
+example (f : ℕ → ℕ) (hf : ∀ n, ∃ m, f m = n) :
+  ∃ g : ℕ → ℕ, ∀ n, f (g n) = n :=
+  by
+  choose g hg using hf
+  exact ⟨g, hg⟩
+
+-- Пример 2:
+example (h : ∀ n m : ℕ, ∃ i j, m = n + i ∨ m + j = n) : True := by
+  choose i j h using h
+  guard_hyp i : ℕ → ℕ → ℕ
+  guard_hyp j : ℕ → ℕ → ℕ
+  guard_hyp h : ∀ (n m : ℕ), m = n + i n m ∨ m + j n m = n
+  trivial
+
+-- Пример 3:
+example (h : ∀ i : ℕ, i < 7 → ∃ j, i < j ∧ j < i+i) : True := by
+  choose! f h h' using h
+  guard_hyp f : ℕ → ℕ
+  guard_hyp h : ∀ (i : ℕ), i < 7 → i < f i
+  guard_hyp h' : ∀ (i : ℕ), i < 7 → f i < i + i
+  trivial
+
+
+/-
+`X` is an abstract type and `P` is an abstract true-false
+statement depending on an element of `X` and a real number.
+-/
 example (X : Type) (P : X → ℝ → Prop)
-  (h : ∀ ε > 0, ∃ x, P x ε) :
-  ∃ u : ℕ → X, ∀ n, P (u n) (1 / (n + 1)) := by sorry
+    /-
+    `h` is the hypothesis that given some `ε > 0` you can find
+    an `x` such that the proposition is true for `x` and `ε`
+    -/
+    (h : ∀ ε > 0, ∃ x, P x ε) :
+  /-
+  Conclusion: there's a sequence of elements of `X` satisfying the
+  condition for smaller and smaller ε
+  -/
+  ∃ u : ℕ → X, ∀ n, P (u n) (1 / (n + 1)) :=
+  by
+  choose g hg using h
+  -- Вводит ф-цию g и заменяет h на новую гипотезу hg, в которой нет ∃ x, а
+  -- вместо него - функция, которая его возвращает, аргументами которой будут
+  -- все переменные + предикаты из квантора всеобщности.
+  guard_hyp g : (ε : ℝ) → ε > 0 → X
+  guard_hyp hg : ∀ (ε : ℝ) (a : ε > 0), P (g ε a) ε
+  --
+  -- Заметь, что в g добавились все переменные из квантора всеобщности + предикаты,
+  -- тк. вообще говоря x может от них зависеть.
+  --
+  /-
+  g : Π (ε : ℝ), ε > 0 → X
+  hg : ∀ (ε : ℝ) (H : ε > 0), P (g ε H) ε
+  -/
+  -- need to prove: 1 / (n + 1) > 0
+  -- (this is why I chose `1 / ( n + 1)` not `1 / n`, as `1 / 0 = 0` in Lean)
+  let u : ℕ → X := fun n ↦ g (1 / (n + 1)) (by positivity)
+  use u -- `u` works
+  intro n
+  apply hg
 
 -- contrapose + contrapose!
 --
