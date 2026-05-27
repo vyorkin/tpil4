@@ -339,7 +339,7 @@ namespace CalculationalProofs
       c + 1 < d := h₃
 
   -- Можно определять свои транзитивные отношения и
-  -- сообщать Lean как с ними работать, реализуя тайпкласс Trans.
+  -- сообщать Lean как с ними работать, реализуя класс типов Trans.
 
   -- divides x y : "x делит y", то есть существует k такое, что k * x = y
   def divides (x y : Nat) : Prop :=
@@ -361,7 +361,7 @@ namespace CalculationalProofs
   def divides_mul (x : Nat) (k : Nat) : divides x (k * x) :=
     ⟨k, rfl⟩
 
-  -- регистрируем инстанс тайпкласса Trans для нашего отношения divides
+  -- регистрируем экземпляр класса типов Trans для нашего отношения divides
   -- Trans r₁ r₂ r₃ означает: если r₁ a b и r₂ b c, то r₃ a c
   -- здесь все три отношения — divides, и trans := divides_trans
   -- именно этот инстанс позволяет calc соединять шаги divides с шагами =

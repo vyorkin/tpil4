@@ -238,7 +238,8 @@ example : ∀ a b c : Nat, a = b → a = c → c = b := by
 -- Использование unhygienic считается плохой практикой для финальных доказательств,
 -- потому что делает код хрупким — имена могут поменяться при рефакторинге.
 -- Лучше пользоваться rename_i.
-example : ∀ a b c : Nat, a = b → a = c → c = b := by unhygienic
+example : ∀ a b c : Nat, a = b → a = c → c = b := by
+  unhygienic
   intros
   apply Eq.trans
   apply Eq.symm
@@ -630,8 +631,8 @@ example (p q r : Prop) : p ∧ (q ∨ r) ↔ (p ∧ q) ∨ (p ∧ r) := by
 
 -- Тактика show p — проверяет, что текущая цель равна p по определению
 -- (т.е. по бета/дельта-редукции), и переименовывает цель в p.
--- Это полезно как документирование: явно указываешь что собираешься доказать,
--- и Lean проверяет что ты не ошибся. Если p не совпадает с целью — ошибка.
+-- Это полезно как документирование: явно указываешь что собираешься доказывать,
+-- и Lean проверяет, что ты не ошибся. Если p не совпадает с целью — ошибка.
 -- Внутри exact (как в примере выше) — show переключает в тактик-мод.
 -- Как самостоятельная тактика (ниже) — просто переименовывает цель.
 -- Можно использовать show как "комментарий".
@@ -667,7 +668,7 @@ example (n : Nat) : n + 1 = Nat.succ n := by
 -- С помощью тактики have можно вводить свои подцели в любой момент.
 -- have h : p := e — добавляет в контекст гипотезу h : p,
 -- где e — доказательство p (либо в терм-стиле, либо через последующий by-блок).
--- Если написать simply have h : p — то Lean сначала генерирует подцель p,
+-- Если написать simply `have h : p` — то Lean сначала генерирует подцель p,
 -- ты её закрываешь, а потом h появляется в контексте для дальнейшей работы.
 -- have удобен когда хочешь именовать промежуточный факт и потом сослаться на него.
 example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
@@ -1191,7 +1192,8 @@ namespace ExtensibleTactics
     apply And.intro <;> triv
 
   -- Можно добавлять рекурсивные расширения.
-  macro_rules | `(tactic| triv) => `(tactic| apply And.intro <;> triv)
+  macro_rules
+    | `(tactic| triv) => `(tactic| apply And.intro <;> triv)
 
   -- Теперь все доказывается тривиально :)
   example (x : α) (h : p) : x = x ∧ p := by
@@ -1396,31 +1398,78 @@ namespace Exercises_1
 
   -- 8.a
   example : ¬(p ∨ q) ↔ ¬p ∧ ¬q := by
-    sorry
+    constructor
+    · intro h
+      -- constructor
+      -- · intro hp
+      --   apply h
+      --   left
+      --   exact hp
+      -- · intro hq
+      --   apply h
+      --   right
+      --   exact hq
+      exact ⟨fun hp => h (Or.inl hp), fun hq => h (Or.inr hq)⟩
+      -- exact ⟨h ∘ .inl, h ∘ .inr⟩
+      --          ^ В Lean 4 `∘` это Function.comp,
+      --            вводится через \comp или \circ.
+    · rintro ⟨hnp, hnq⟩ (hp | hq)
+      · exact hnp hp
+      · exact hnq hq
 
   -- 9.a
   example : ¬p ∨ ¬q → ¬(p ∧ q) := by
-    sorry
+    rintro (hnp | hnq) ⟨hp, hq⟩ <;> contradiction
 
   -- 10.a
   example : ¬(p ∧ ¬p) := by
-    sorry
+    rintro ⟨hp, hnp⟩; contradiction
 
   -- 11.a
   example : p ∧ ¬q → ¬(p → q) := by
-    sorry
+    rintro ⟨hp, hnq⟩ hpiq
+    have hq := hpiq hp
+    contradiction
+
+  -- 11.b
+  example : p ∧ ¬q → ¬(p → q) := by
+    rintro ⟨hp, hnq⟩ hpiq
+    exact hnq (hpiq hp)
+
+  -- 11.c
+  example : p ∧ ¬q → ¬(p → q) :=
+    fun ⟨hp, hnq⟩ hpiq => hnq (hpiq hp)
 
   -- 12.a
   example : ¬p → (p → q) := by
-    sorry
+    rintro hp hnp
+    contradiction
 
   -- 13.a
   example : (¬p ∨ q) → (p → q) := by
-    sorry
+    rintro (hnp | hq) hp
+    · contradiction
+    · assumption
 
   -- 14.a
   example : p ∨ False ↔ p := by
-    sorry
+    constructor
+    · rintro (hp | hf)
+      · exact hp
+      · -- contradiction
+        -- exact hf.elim
+        exact False.elim hf
+    · intro hp
+      left; exact hp
+
+  -- 14.b
+example : p ∨ False ↔ p := by
+  constructor
+  · intro h
+    cases h with
+    | inl hp => exact hp
+    | inr hf => exact hf.elim
+  · exact Or.inl
 
   -- 15.a
   example : p ∧ False ↔ False := by
@@ -1429,6 +1478,7 @@ namespace Exercises_1
   -- 16.a
   example : (p → q) → (¬q → ¬p) := by
     sorry
+
 end Exercises_1
 
 namespace ExercisesClassical_1
@@ -1444,7 +1494,39 @@ namespace ExercisesClassical_1
 
   -- 17.a
   example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := by
-    sorry
+    intro h
+    rcases em r with hr | hnr
+    · right
+      intro hp
+      exact hr
+    · left
+      intro hp
+      rcases h hp with hq | hr
+      · exact hq
+      · contradiction
+
+-- Гораздо удобнее было бы в этом случае использовать тактику by_cases.
+-- Следующие два сценария с использованием разных тактик эквивалетны:
+--
+-- rcases em r with hr | hnr
+-- ~
+-- by_cases hr : r
+
+-- 17.b
+example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := by
+  intro h
+  by_cases hp : p
+  · rcases h hp with hq | hr
+    · exact Or.inl (fun _ => hq)
+    · exact Or.inr (fun _ => hr)
+  · exact Or.inl (fun hp' => absurd hp' hp)
+
+-- 17.c
+example : (p → q ∨ r) → ((p → q) ∨ (p → r)) := by
+  intro h
+  by_cases hr : r
+  · exact Or.inr (fun _ => hr)
+  · exact Or.inl (fun hp => (h hp).elim id (absurd · hr))
 
   -- left  ~ apply Or.inl
   -- right ~ apply Or.inr
@@ -1452,7 +1534,7 @@ namespace ExercisesClassical_1
   -- 18.a
   example : ¬(p ∧ q) → ¬p ∨ ¬q := by
     intro h_npq
-    cases (em p) with
+    cases em p with
     | inl h_p =>
       apply Or.elim (em q)
       · intro h_q
@@ -1624,9 +1706,36 @@ namespace Exercises_2
       rw [not_exists] at *
       assumption
 
+
   -- 32.a
   example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := by
-    sorry
+    constructor
+    · intro h
+      apply Classical.byContradiction
+      intro h'
+      apply h
+      intro x
+      apply Classical.byContradiction
+      intro hnx
+      exact h' ⟨x, hnx⟩
+    · rintro ⟨x, hnx⟩ hall
+      exact hnx (hall x)
+
+  #check Classical.not_forall -- (¬∀ (x : α), p x) ↔ ∃ x, ¬p x
+
+  -- 32.b
+  example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := by
+    constructor
+    · intro h
+      rw [Classical.not_forall] at h
+      exact h
+    · intro h
+      rw [Classical.not_forall]
+      exact h
+
+  -- 32.c
+  example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) :=
+    Classical.not_forall
 
   -- 33.a
   example : (∀ x, p x → r) ↔ (∃ x, p x) → r := by

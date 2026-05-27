@@ -200,15 +200,15 @@ inductive Weekday where
   | saturday
 deriving Repr
 
--- Если не задерайвить Repr, то он всё равно задерайвится в
--- момент использования, например, #eval.
+-- Если не написать deriving Repr, то экземпляр Repr всё равно будет выведен
+-- автоматически в момент использования, например, #eval.
 --
 -- deriving Repr — команда кодогенерации: Lean автоматически выводит экземпляр
 -- класса типов Repr для Weekday. Repr это интерфейс с одним методом:
 --   reprPrec : α → Nat → Std.Format
 -- который форматирует значение для вывода. #eval вызывает его под капотом.
 -- Без deriving Repr #eval не знает как отобразить значение типа Weekday —
--- нужно либо задерайвить, либо написать instance вручную.
+-- нужно либо написать deriving Repr, либо определить instance вручную.
 
 open Weekday
 
@@ -645,7 +645,7 @@ namespace My11
 
 -- Наименьший рекурсивный тип из возможных.
 -- zero — базовый случай, succ — рекурсивный конструктор.
--- succ : Nat → Nat  означает: дай мне уже существующее натуральное число,
+-- succ : Nat → Nat означает: дай мне уже существующее натуральное число,
 -- и я построю следующее. Так 3 = succ (succ (succ zero)).
 -- Натуральные числа — это в точности унарная запись (палочки).
 inductive Nat where
@@ -694,13 +694,13 @@ inductive Nat where
 -- Пример (add через Nat.rec):
 --
 -- def add (m n : Nat) : Nat := match n with
---   | zero   => m
+--   | zero    => m
 --   | succ n' => succ (add m n')
 --
 -- Через Nat.rec это выглядит так:
 --
 --   Nat.rec
---     (motive := fun _ => Nat)      -- результат всегда Nat (недепедентный)
+--     (motive := fun _ => Nat)      -- результат всегда Nat (тип не зависит от значения)
 --     m                             -- (1) add m 0 = m
 --     (fun n' ih => succ ih)        -- (2) add m (n'+1) = succ (add m n')
 --                                   --     где ih = add m n' (уже вычислено)
@@ -713,30 +713,23 @@ inductive Nat where
 --   = succ 2               -- base: add 2 zero = 2
 --   = 3
 --
--- ── Пример: доказательство через Nat.rec (зависимый случай) ────────────
+-- Пример: доказательство через Nat.rec (зависимый случай):
 --
 -- theorem zero_add (n : Nat) : 0 + n = n :=
 --   Nat.rec
 --     (motive := fun n => 0 + n = n)     -- для каждого n свой тип
 --     (rfl : 0 + 0 = 0)                  -- (1) base case
 --     (fun n ih =>                       -- (2) шаг:
---       -- ih : 0 + n = n                --   уже знаем для n
---       -- цель: 0 + (n+1) = n+1
+--       --  ih : 0 + n = n               -- уже знаем для n
+--       -- goal: 0 + (n+1) = n+1
 --       calc 0 + (n + 1) = (0 + n) + 1 := rfl
---                        _ = n + 1      := by rw [ih])
+--                        _ = n + 1     := by rw [ih])
 --     n
 --
 -- Здесь motive = fun n => 0 + n = n, поэтому:
 --   motive 0 = (0 + 0 = 0)     — тип base case
 --   motive n.succ = (0 + n.succ = n.succ) — тип шага
 -- Типы разные для разных n — это зависимая элиминация в действии.
---
--- ── Итоговое резюме ────────────────────────────────────────────────────
---
--- .rec (и match) — единственный способ "заглянуть внутрь" значения инд. типа.
--- Lean строго контролирует что для всех конструкторов есть ответ (тотальность).
--- В рекурсивных конструкторах появляется ih — готовый ответ для "меньшего" значения.
--- Это делает рекурсию хорошо основанной: не нужна аксиома, всё выводится из .rec.
 --
 -- Все тактики induction, cases, match — это лишь удобный синтаксис
 -- для построения терма через .rec / .casesOn.
@@ -778,8 +771,6 @@ open Nat
 instance : Add Nat where
   add := add
 
--- add_zero: m + 0 = m — разворачивается по первому случаю match, rfl.
--- add_succ: m + (n+1) = (m+n)+1 — разворачивается по второму случаю match, rfl.
 -- Они доказываются rfl, потому что обе стороны вычисляются в одно и то же.
 theorem add_zero (m : Nat) : m + zero = m := rfl
 theorem add_succ (m n : Nat) : m + succ n = succ (m + n) := rfl
@@ -1080,13 +1071,14 @@ def Tuple (α : Type) (n : Nat) :=
   { as : List α // as.length = n }
 
 def f {n : Nat} (t : Tuple α n) : Nat := by
-  cases n -- Кейсим по длине тапла
-  · exact 3
-  · exact 7 -- Для любого кортежa не нулевой длины
+  cases n -- Разбираем на случаи по длине кортежа
+  · exact 3 -- В случае кортежа нулевой длины
+  · exact 7 -- В случае кортежa не нулевой длины
 
 def myTuple : Tuple Nat 3 := ⟨[0, 1, 2], rfl⟩
 
 example : f myTuple = 7 := rfl
+example : f (⟨[], rfl⟩ : Tuple Nat 0) = 3 := rfl
 
 -- Тактики для работы с индуктивными типами.
 --
@@ -1131,7 +1123,7 @@ example (p : Nat → Prop)
         p (m + 3 * k) := by
   cases m + 3 * k -- generalize m + 3 * k = n; cases n
   · exact hz
-  · apply hs
+  · apply hs -- exact (hs _)
 
 -- Можно o `cases m + 3 * k` думать как о
 -- команде доказать отдельно следующие 2 факта:
@@ -1142,7 +1134,7 @@ example (p : Nat → Prop)
 -- generalize m + 3 * k = n
 -- cases n
 
--- Когда выражение, которое хочется раскидать по кейсам не вcтречается
+-- Когда выражение, которое хочется разобрать по конструкторам, не встречается
 -- в цели, cases создаёт нам в контексте гипотезу по этому выражению.
 -- Точнее: cases <expr> добавляет h : expr = <конструктор> в контекст каждой ветки,
 -- что позволяет использовать это равенство в доказательстве.
@@ -1255,7 +1247,7 @@ open Nat
 -- Можно делать injection несколько раз, каждый раз "снимая" один слой succ.
 
 example (m n k : Nat) (h : succ (succ m) = succ (succ n)) : n + k = m + k := by
-  injection h with h'
+  injection h  with h'
   injection h' with h''
   rw [h'']
 
@@ -1263,6 +1255,15 @@ example (m n k : Nat) (h : succ (succ m) = succ (succ n)) : n + k = m + k := by
 -- succ m = 0 — это False (разные конструкторы не равны), injection это замечает.
 example (m n : Nat) (h : succ m = 0) : n = n + 7 := by
   injection h
+
+-- Вместо injection мы могли бы написать явно:
+example (m n : Nat) (h : succ m = 0) : n = n + 7 := by
+  have f : False := by cases h  -- разбор случаев показывает, что конструкторы разные, получаем пустой набор подцелей
+  exact False.elim f
+
+-- Или тоже самое
+example (m n : Nat) (h : succ m = 0) : n = n + 7 :=
+  False.elim (nomatch h)  -- nomatch тоже замечает противоречие
 
 -- То же самое более явно c помощью тактики contradiction:
 -- contradiction ищет в контексте любое явное противоречие:
