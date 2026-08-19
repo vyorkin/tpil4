@@ -107,7 +107,8 @@ theorem test₅ (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
 
 -- 5.2. Basic Tactics
 
--- Iff.intro требует доказательства обоих направлений (→ и ←), поэтому
+-- Iff.intro требует доказательства обоих направлений
+-- (mp : a → b и mpr: b ← a), поэтому
 -- apply Iff.intro создаёт две подцели — по одной на каждое направление.
 -- Or.elim : (a ∨ b) → (a → c) → (b → c) → c
 -- Применяем его к h.right (это q ∨ r), передавая два обработчика-ветки.
@@ -375,7 +376,11 @@ example (p q : Prop) : p ∨ q → q ∨ p := by
   cases h with
   | inl hp => apply Or.inr; exact hp
   | inr hq => apply Or.inl; exact hq
--- ^ Порядок не важен
+  -- ^ Порядок не важен
+  -- Аналогично:
+  -- intro
+  -- | Or.inl hp => apply Or.inr; exact hp
+  -- | Or.inr hq => apply Or.inl; exact hq
 
 -- Та же фигня, только в тактик-мод (без with).
 -- Только cases создаёт не именованные гипотезы.
@@ -706,11 +711,20 @@ example (p q r : Prop) : p ∧ (q ∨ r) → (p ∧ q) ∨ (p ∧ r) := by
 --                      определение e не видно дальше (Lean "забывает" что h = e).
 --   let a : T := e   — вводит a : T := e как прозрачное определение;
 --                      Lean помнит что a разворачивается в e.
--- Используй let когда нужно вычислить конкретное значение и потом передать его
--- как свидетеля (например, в exists). Используй have для логических фактов.
+--
+-- Используй let когда нужно вычислить конкретное значение и
+-- потом передать его как свидетеля (например, в exists).
+-- Используй have для логических фактов.
 example : ∃ x, x + 2 = 8 := by
   let a : Nat := 3 * 2 -- Тип тут можно было бы и не писать
   exists a
+
+-- А вот так не сработает. Потому что have "забывает" что такое b.
+-- Забывает / не сохраняет внутреннюю структуру.
+example : ∃ x, x + 2 = 8 := by
+  have b : Nat := 6
+  exists b
+  sorry
 
 -- Тактические блоки можно определять не только с помощью точки ·
 -- Это можно делать используя фигурные скобки.
@@ -812,12 +826,17 @@ example (p q r : Prop) (hp : p) (hq : q) (hr : r) : p ∧ q ∧ r := by
   any_goals constructor
   any_goals assumption
 
--- Благодаря эти комбинторам, можно в одну строчку раскидать
+-- Благодаря эти комбинaторам, можно в одну строчку раскидать
 -- на конъюнкты по подцелям эту одну большую конъюнкцию.
 example (p q r : Prop) (hp : p) (hq : q) (hr : r) :
   p ∧ ((p ∧ q) ∧ r) ∧ (q ∧ r ∧ p) := by
   repeat (any_goals constructor)
   all_goals assumption
+  -- Это аналогично этому:
+  -- split_ands
+  -- Но сейчас split_ands работать не будет, потому что нет соответствующих импортов:
+  -- import Mathlib
+  -- import Mathlib.Tactic
 
 -- Можно ужать это док-во до одной строчки.
 example (p q r : Prop) (hp : p) (hq : q) (hr : r) :
@@ -929,7 +948,7 @@ example (a b : Nat) (h : a = b) (h2 : b = 0) : a = 0 := by
 
 -- Тактика simp — автоматический упроститель.
 -- Она применяет набор лемм (помеченных атрибутом @[simp]) до тех пор,
--- пока дальнейшее упрощение невозможно (нормальная форма).
+-- пока дальнейшее упрощение не станет невозможно (нормальная форма).
 -- simp умеет: раскрывать определения, применять арифметику, логику,
 --             переписывать по леммам равенства, упрощать if-then-else и т.д.
 -- simp [h₁, h₂] — добавляет h₁, h₂ к стандартному набору simp-лемм.
@@ -1140,6 +1159,16 @@ end
 example : 0 < 1 + x ∧ x + y + 2 ≥ y + 1 := by
   simp +arith
 
+-- Чем simp +arith отличается от linarith и omega.
+-- omega и linarith — отдельные тактики-решатели, simp +arith —
+-- просто часть simp: работает заодно с обычными леммами
+-- и раскрытием определений, но арифметику понимает слабее —
+-- только нормализацию и сравнение чисел, это не полный решатель.
+-- omega — полный решатель линейной арифметики над Nat/Int,
+-- умеет div/mod и усечённое вычитание на Nat.
+-- linarith работает шире по типам (Rat, Real), но для Nat/Int
+-- слабее omega (например, не умеет в mod).
+
 -- 5.8. Split Tactic
 
 def f₀ (x y z : Nat) : Nat :=
@@ -1152,16 +1181,17 @@ def f₀ (x y z : Nat) : Nat :=
 -- Тактика split разбивает match по кейсам.
 -- Сколько было веток в match, столько будет и кейсов.
 -- То же и для if-then-else.
+--
 -- split полезна когда функция определена через match и нужно
 -- доказать что-то о ней: split раскрывает все случаи матча
 -- и ты доказываешь каждый отдельно.
+--
 -- Здесь simp [f₀] раскрывает определение f₀, после чего
 -- в цели появляется match-выражение, которое split разбивает на 4 ветки.
 -- В первых трёх ветках одна из переменных равна 5, а у нас есть гипотеза что ≠5 —
 -- противоречие закрывается через contradiction.
 -- Четвёртая ветка — f₀ возвращает 1, цель 1 = 1 закрывается через rfl.
-example (x y z : Nat)
-        : x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w → f₀ x y w = 1 := by
+example (x y z : Nat) : x ≠ 5 → y ≠ 5 → z ≠ 5 → z = w → f₀ x y w = 1 := by
   intros
   simp [f₀] -- Раскрывает определение f₀
   split
@@ -1233,7 +1263,7 @@ namespace ExtensibleTactics
   macro_rules
     | `(tactic| triv) => `(tactic| apply And.intro <;> triv)
 
-  -- Теперь все доказывается тривиально :)
+  -- Теперь все доказывается "тривиально" :)
   example (x : α) (h : p) : x = x ∧ p := by
     triv
 
@@ -1252,7 +1282,7 @@ namespace Exercises_1
   example : p ∨ q ↔ q ∨ p := by
     apply Iff.intro
     · intro h
-      apply Or.elim h
+      apply Or.elim h -- (h : Or a b) (left : a → c) (right : b → c) : c
       · intro ev_p
         apply Or.inr
         exact ev_p
@@ -1273,8 +1303,8 @@ namespace Exercises_1
     constructor
     repeat
       intro
-      | Or.inl p => exact Or.inr p
-      | Or.inr q => exact Or.inl q
+      | Or.inl pq => exact Or.inr pq
+      | Or.inr qp => exact Or.inl qp
 
   -- 1.c
   example : p ∨ q ↔ q ∨ p := by
@@ -1497,6 +1527,7 @@ namespace Exercises_1
       · -- contradiction
         -- exact hf.elim
         exact False.elim hf
+        -- exfalso; exact hf
     · intro hp
       left; exact hp
 
@@ -1511,11 +1542,17 @@ example : p ∨ False ↔ p := by
 
   -- 15.a
   example : p ∧ False ↔ False := by
-    sorry
+    constructor
+    · intro h
+      exact h.right
+    · intro hf
+      exfalso
+      exact hf
 
   -- 16.a
   example : (p → q) → (¬q → ¬p) := by
-    sorry
+    intro hpq hnq hp
+    exact hnq (hpq hp)
 
 end Exercises_1
 
@@ -1634,9 +1671,28 @@ namespace ExercisesNonClassical_1
   variable (p : Prop)
 
   -- 24.a
-  -- TODO: Prove without using classical logic.
   example : ¬(p ↔ ¬ p) := by
-    apply iff_not_self
+    intro h
+    have h0 := h.mp
+    have h1 := h.mpr
+    apply h0
+    apply h1
+    intro hp
+    apply h0 hp
+    exact hp
+    apply h1
+    intro hp
+    apply h0 hp
+    exact hp
+
+  -- То же самое, но короче: сперва получаем ¬p напрямую —
+  -- если бы у нас было p, то через h.mp получили бы ¬p,
+  -- применили бы его к тому же p и получили False, значит p невозможно.
+  -- Дальше из ¬p через h.mpr получаем p — и вот оно, противоречие.
+  example : ¬(p ↔ ¬ p) := by
+    intro h
+    have hnp : ¬p := fun hp => h.mp hp hp
+    exact hnp (h.mpr hnp)
 
 end ExercisesNonClassical_1
 
