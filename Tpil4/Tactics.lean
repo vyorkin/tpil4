@@ -1800,11 +1800,11 @@ namespace Exercises_2
       rw [not_exists] at *
       assumption
 
-
   -- 32.a
   example : (¬ ∀ x, p x) ↔ (∃ x, ¬ p x) := by
     constructor
     · intro h
+      -- Предположим обратное. Должны прийти при к противоречию.
       apply Classical.byContradiction
       intro h'
       apply h
@@ -1833,19 +1833,51 @@ namespace Exercises_2
 
   -- 33.a
   example : (∀ x, p x → r) ↔ (∃ x, p x) → r := by
-    sorry
+    constructor
+    · intro h0 ⟨x, hpx⟩
+      exact h0 x hpx
+    · intro h0 x hpx
+      exact h0 ⟨x, hpx⟩
 
   -- 34.a
   example (a : α) : (∃ x, p x → r) ↔ (∀ x, p x) → r := by
-    sorry
+    constructor
+    · intro ⟨x, hx⟩ h1
+      exact hx (h1 x)
+    · intro h0
+      by_cases hap : ∀ x, p x
+      · -- p выполняется всюду — берём любого свидетеля (например a)
+        -- и просто игнорим аргумент p a, вызывая h0 hap напрямую.
+        exact ⟨a, fun _ => h0 hap⟩
+      · -- ∀ x, p x не выполняется — значит найдётся x, для которого p x ложно,
+        -- тогда p x → r доказывается тривиально через absurd.
+        rw [Classical.not_forall] at hap
+        obtain ⟨x, hnpx⟩ := hap
+        exact ⟨x, fun hpx => absurd hpx hnpx⟩
 
   -- 35.a
   example (a : α) : (∃ x, r → p x) ↔ (r → ∃ x, p x) := by
-    sorry
+    constructor
+    · intro ⟨x, hx⟩ hr
+      exists x
+      exact hx hr
+    · intro h
+      by_cases hr : r
+      · obtain ⟨x, hpx⟩ := h hr
+        exact ⟨x, fun _ => hpx⟩
+      · exact ⟨a, fun hr' => absurd hr' hr⟩
 
   -- 36.a
   example : (∀ x, p x ∧ q x) ↔ (∀ x, p x) ∧ (∀ x, q x) := by
-    sorry
+    constructor
+    · intro h
+      constructor
+      · intro x
+        exact (h x).left
+      · intro x
+        exact (h x).right
+    · intro h x
+      exact ⟨h.left x, h.right x⟩
 
   -- 37.a
   example : (∀ x, p x → q x) → (∀ x, p x) → (∀ x, q x) := by
